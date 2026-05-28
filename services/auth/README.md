@@ -16,6 +16,14 @@ $env:FLASK_APP = "services.auth.app"
 
 Copy `.env.example` to `.env` and adjust secrets if needed.
 
+## Email rules (register and login)
+
+- Valid format (RFC-style), normalized to lowercase
+- Maximum 255 characters (database limit)
+- Must be a JSON string (not a number or object)
+- Rejects control characters and line breaks (injection hardening)
+- Login returns `Invalid credentials.` for malformed emails (no account enumeration)
+
 ## Password rules (register)
 
 - At least 8 characters

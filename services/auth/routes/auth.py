@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
-from services.auth import jwt_tokens, password
+from services.auth import email_validation, jwt_tokens, password
 from services.auth.extensions import db
 from services.auth.jwt_tokens import TokenError, TokenRevokedError
 from services.auth.models.user import User
@@ -26,11 +26,21 @@ def _extract_bearer_token() -> str | None:
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
+    raw_email = data.get("email")
     raw_password = data.get("password") or ""
     name = (data.get("name") or "").strip() or None
 
-    if not email or not raw_password:
+    if raw_email is not None and not isinstance(raw_email, str):
+        return _error("Invalid email address.", 400)
+
+    email, email_error = email_validation.validate_and_normalize_email(
+        str(raw_email or "")
+    )
+    if not email and not raw_password:
+        return _error("Email and password are required.", 400)
+    if email_error:
+        return _error(email_error, 400)
+    if not raw_password:
         return _error("Email and password are required.", 400)
 
     password_error = password.get_password_validation_error(raw_password)
@@ -68,11 +78,19 @@ def register():
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
+    raw_email = data.get("email")
     raw_password = data.get("password") or ""
 
+    if raw_email is not None and not isinstance(raw_email, str):
+        return _error("Invalid credentials.", 401)
+
+    email, email_error = email_validation.validate_and_normalize_email(
+        str(raw_email or "")
+    )
     if not email or not raw_password:
         return _error("Email and password are required.", 400)
+    if email_error:
+        return _error("Invalid credentials.", 401)
 
     user = User.query.filter_by(email=email).first()
     if not user or not password.verify_password(raw_password, user.password_hash):
