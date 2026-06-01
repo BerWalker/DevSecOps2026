@@ -4,17 +4,28 @@ Base URL: `http://localhost:5001`
 
 ## Setup
 
-From the project root:
+From the project root (Docker — recommended):
 
 ```powershell
-docker compose up -d
+Copy-Item .env.example .env   # if .env does not exist yet
+docker compose up -d --build
+```
+
+API: `http://localhost:5001` (migrations run automatically on container start).
+
+Copy `.env.example` to `.env` and change `JWT_SECRET_KEY` (and other secrets) before production.
+
+### Local development (optional, without Docker for the app)
+
+```powershell
+docker compose up -d postgres
 .\.venv\Scripts\pip install -r requirements.txt
 $env:FLASK_APP = "services.auth.app"
 .\.venv\Scripts\flask db upgrade
 .\.venv\Scripts\python -m services.auth.app
 ```
 
-Copy `.env.example` to `.env` and adjust secrets if needed.
+For local runs, set `DATABASE_URL` to a full connection string (python-dotenv does not expand `${POSTGRES_*}` in `.env`).
 
 ## Email rules (register and login)
 
