@@ -1,6 +1,6 @@
 # Authentication microservice (`services/auth`)
 
-Base URL: `http://localhost:5001`
+Base URL: `http://localhost:5000` (nginx API Gateway → auth service)
 
 ## Setup
 
@@ -11,7 +11,13 @@ Copy-Item .env.example .env   # if .env does not exist yet
 docker compose up -d --build
 ```
 
-API: `http://localhost:5001` (migrations run automatically on container start).
+API: `http://localhost:5000` via the gateway (`gateway/nginx.conf` proxies `/api/auth/` to the auth container). Migrations run automatically on auth container start.
+
+The auth service is not published on the host; use the gateway port (`GATEWAY_PORT`, default `5000`). To hit auth directly for debugging, use `docker compose exec auth` or temporarily add a `ports` mapping on the `auth` service.
+
+### Gateway (security and CORS)
+
+See [`gateway/README.md`](../../gateway/README.md) for architecture, security rules, and validation tests.
 
 Copy `.env.example` to `.env` and change `JWT_SECRET_KEY` (and other secrets) before production.
 
@@ -25,7 +31,7 @@ $env:FLASK_APP = "services.auth.app"
 .\.venv\Scripts\python -m services.auth.app
 ```
 
-For local runs, set `DATABASE_URL` to a full connection string (python-dotenv does not expand `${POSTGRES_*}` in `.env`).
+For local runs, set `DATABASE_URL` to a full connection string (python-dotenv does not expand `${POSTGRES_*}` in `.env`). Use base URL `http://localhost:5001` (no gateway).
 
 ## Email rules (register and login)
 
@@ -48,7 +54,7 @@ User `id` is a UUID (string in JSON and in JWT claim `sub`).
 
 ## Insomnia
 
-Create a workspace or folder **Auth** with base URL `http://localhost:5001`.
+Create a workspace or folder **Auth** with base URL `http://localhost:5000`.
 
 For logout, set header `Authorization` to `Bearer <token>` using the token returned by login.
 
@@ -57,7 +63,7 @@ For logout, set header `Authorization` to `Bearer <token>` using the token retur
 | Field | Value |
 |-------|-------|
 | Method | `POST` |
-| URL | `http://localhost:5001/api/auth/register` |
+| URL | `http://localhost:5000/api/auth/register` |
 | Header | `Content-Type: application/json` |
 
 **Body (JSON):**
@@ -104,7 +110,7 @@ Same as above (same email). **Expected:** `409`
 | Field | Value |
 |-------|-------|
 | Method | `POST` |
-| URL | `http://localhost:5001/api/auth/register` |
+| URL | `http://localhost:5000/api/auth/register` |
 
 **Body (JSON):**
 
@@ -124,7 +130,7 @@ Same as above (same email). **Expected:** `409`
 | Field | Value |
 |-------|-------|
 | Method | `POST` |
-| URL | `http://localhost:5001/api/auth/login` |
+| URL | `http://localhost:5000/api/auth/login` |
 | Header | `Content-Type: application/json` |
 
 **Body (JSON):**
@@ -178,7 +184,7 @@ Copy `token` for logout requests.
 | Field | Value |
 |-------|-------|
 | Method | `POST` |
-| URL | `http://localhost:5001/api/auth/logout` |
+| URL | `http://localhost:5000/api/auth/logout` |
 | Header | `Authorization: Bearer <paste_token_here>` |
 
 No body.
@@ -205,7 +211,7 @@ Same request as #6 with the same token. **Expected:** `200` (token already revok
 | Field | Value |
 |-------|-------|
 | Method | `POST` |
-| URL | `http://localhost:5001/api/auth/logout` |
+| URL | `http://localhost:5000/api/auth/logout` |
 
 No `Authorization` header. **Expected:** `401`
 
@@ -243,53 +249,53 @@ Run with the service up. Replace the email if you already registered it.
 **Register**
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:5001/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!","name":"Test User"}'
+Invoke-RestMethod -Uri "http://localhost:5000/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!","name":"Test User"}'
 ```
 
 **Login (saves `$token`)**
 
 ```powershell
-$login = Invoke-RestMethod -Uri "http://localhost:5001/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!"}'; $token = $login.token; $login
+$login = Invoke-RestMethod -Uri "http://localhost:5000/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!"}'; $token = $login.token; $login
 ```
 
 **Logout**
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:5001/api/auth/logout" -Method POST -Headers @{ Authorization = "Bearer $token" }
+Invoke-RestMethod -Uri "http://localhost:5000/api/auth/logout" -Method POST -Headers @{ Authorization = "Bearer $token" }
 ```
 
 **Full happy path (single line)**
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:5001/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!","name":"Test"}'; $login = Invoke-RestMethod -Uri "http://localhost:5001/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!"}'; $token = $login.token; Invoke-RestMethod -Uri "http://localhost:5001/api/auth/logout" -Method POST -Headers @{ Authorization = "Bearer $token" }
+Invoke-RestMethod -Uri "http://localhost:5000/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!","name":"Test"}'; $login = Invoke-RestMethod -Uri "http://localhost:5000/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!"}'; $token = $login.token; Invoke-RestMethod -Uri "http://localhost:5000/api/auth/logout" -Method POST -Headers @{ Authorization = "Bearer $token" }
 ```
 
 **Duplicate email (409)**
 
 ```powershell
-try { Invoke-RestMethod -Uri "http://localhost:5001/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!"}' } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
+try { Invoke-RestMethod -Uri "http://localhost:5000/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"Password1!"}' } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
 ```
 
 **Weak password (400)**
 
 ```powershell
-try { Invoke-RestMethod -Uri "http://localhost:5001/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"weak@example.com","password":"short"}' } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
+try { Invoke-RestMethod -Uri "http://localhost:5000/api/auth/register" -Method POST -ContentType "application/json" -Body '{"email":"weak@example.com","password":"short"}' } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
 ```
 
 **Wrong password (401)**
 
 ```powershell
-try { Invoke-RestMethod -Uri "http://localhost:5001/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"WrongPass1!"}' } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
+try { Invoke-RestMethod -Uri "http://localhost:5000/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"WrongPass1!"}' } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
 ```
 
 **Logout without token (401)**
 
 ```powershell
-try { Invoke-RestMethod -Uri "http://localhost:5001/api/auth/logout" -Method POST } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
+try { Invoke-RestMethod -Uri "http://localhost:5000/api/auth/logout" -Method POST } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
 ```
 
 **Logout with revoked token (401)**
 
 ```powershell
-try { Invoke-RestMethod -Uri "http://localhost:5001/api/auth/logout" -Method POST -Headers @{ Authorization = "Bearer $token" } } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
+try { Invoke-RestMethod -Uri "http://localhost:5000/api/auth/logout" -Method POST -Headers @{ Authorization = "Bearer $token" } } catch { $_.Exception.Response.StatusCode.value__; ($_ | Select-Object -ExpandProperty ErrorDetails).Message }
 ```
