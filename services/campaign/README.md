@@ -6,7 +6,7 @@ Base URL (via gateway): `http://localhost:5000`
 
 ## Autenticação
 
-Rotas `/api/campaigns*` exigem JWT do serviço auth (`Authorization: Bearer <token>`).
+Rotas `/api/campaigns*` exigem JWT do serviço auth (`Authorization: Bearer <token>`). A validação é stateless (assinatura e expiração); revogação de logout é gerida apenas pelo serviço auth.
 
 Rota pública de tracking: `GET|POST /track/<token>` (sem autenticação).
 
@@ -68,7 +68,7 @@ GET http://localhost:5000/track/<token>?event=click
 
 | Variável | Descrição |
 |----------|-----------|
-| `DATABASE_URL` | PostgreSQL (mesma base do auth) |
+| `CAMPAIGN_DATABASE_URL` | PostgreSQL dedicado (`campaign_db`) |
 | `JWT_SECRET_KEY` | Mesmo segredo do auth |
 | `CAMPAIGN_SERVICE_PORT` | Porta interna (padrão `5002`) |
 | `TRACKING_BASE_URL` | Base pública dos links (padrão `http://localhost:5000`) |
@@ -81,13 +81,14 @@ Na raiz do projeto:
 docker compose up -d --build
 ```
 
-Migração `002_campaigns` é aplicada no start do container.
+Migrations do campaign são aplicadas no start do container.
 
 ## Desenvolvimento local (opcional)
 
 ```powershell
-docker compose up -d postgres
+docker compose up -d postgres-campaign
 $env:FLASK_APP = "services.campaign.app"
+$env:CAMPAIGN_DATABASE_URL = "postgresql+psycopg://campaign:campaign@localhost:5433/campaign_db"
 flask db upgrade
 python -m services.campaign.app
 ```

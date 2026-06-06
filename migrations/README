@@ -1,8 +1,0 @@
-Single-database configuration for Flask-Migrate.
-
-Run from project root:
-
-```powershell
-$env:FLASK_APP = "services.auth.app"
-flask db upgrade
-```

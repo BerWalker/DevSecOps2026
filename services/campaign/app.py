@@ -18,7 +18,7 @@ def create_app(config_class: type = Config) -> Flask:
         config_class.validate()
 
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate.init_app(app, db, directory="services/campaign/migrations")
     app.register_blueprint(campaigns_bp)
     app.register_blueprint(tracking_bp)
 

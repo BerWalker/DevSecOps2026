@@ -1,7 +1,7 @@
 """campaigns, target groups, targets, tracking
 
-Revision ID: 002_campaigns
-Revises: 001_initial
+Revision ID: 001_campaigns
+Revises:
 Create Date: 2026-06-03
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "002_campaigns"
-down_revision = "001_initial"
+revision = "001_campaigns"
+down_revision = None
 branch_labels = None
 depends_on = None
 

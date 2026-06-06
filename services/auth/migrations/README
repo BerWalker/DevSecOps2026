@@ -1,0 +1,9 @@
+Auth service database migrations.
+
+Run from project root:
+
+```powershell
+$env:FLASK_APP = "services.auth.app"
+$env:AUTH_DATABASE_URL = "postgresql+psycopg://auth:auth@localhost:5432/auth_db"
+flask db upgrade
+```

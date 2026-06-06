@@ -17,7 +17,7 @@ def create_app(config_class: type = Config) -> Flask:
         config_class.validate()
 
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate.init_app(app, db, directory="services/auth/migrations")
     app.register_blueprint(auth_bp)
 
     return app

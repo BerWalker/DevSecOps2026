@@ -13,6 +13,8 @@ docker compose up -d --build
 
 API: `http://localhost:5000` via the gateway (`gateway/nginx.conf` proxies `/api/auth/` to the auth container). Migrations run automatically on auth container start.
 
+Auth uses a dedicated PostgreSQL instance (`postgres-auth`, database `auth_db`). If you previously ran the monolithic `migrations/` setup, drop campaign tables from `auth_db` or reset the volume: `docker compose down -v` then `docker compose up -d --build`.
+
 The auth service is not published on the host; use the gateway port (`GATEWAY_PORT`, default `5000`). To hit auth directly for debugging, use `docker compose exec auth` or temporarily add a `ports` mapping on the `auth` service.
 
 ### Gateway (security and CORS)
@@ -24,14 +26,15 @@ Copy `.env.example` to `.env` and change `JWT_SECRET_KEY` (and other secrets) be
 ### Local development (optional, without Docker for the app)
 
 ```powershell
-docker compose up -d postgres
+docker compose up -d postgres-auth
 .\.venv\Scripts\pip install -r requirements.txt
 $env:FLASK_APP = "services.auth.app"
+$env:AUTH_DATABASE_URL = "postgresql+psycopg://auth:auth@localhost:5432/auth_db"
 .\.venv\Scripts\flask db upgrade
 .\.venv\Scripts\python -m services.auth.app
 ```
 
-For local runs, set `DATABASE_URL` to a full connection string (python-dotenv does not expand `${POSTGRES_*}` in `.env`). Use base URL `http://localhost:5001` (no gateway).
+For local runs, set `AUTH_DATABASE_URL` to a full connection string (python-dotenv does not expand `${AUTH_POSTGRES_*}` in `.env`). Use base URL `http://localhost:5001` (no gateway).
 
 ## Email rules (register and login)
 

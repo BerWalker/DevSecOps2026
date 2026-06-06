@@ -5,7 +5,8 @@ Ponto de entrada único da API em Docker. O gateway escuta na porta pública (`G
 ## Arquitetura
 
 ```
-Cliente → localhost:5000 (gateway) → auth:5001 → postgres
+Cliente → localhost:5000 (gateway) → auth:5001 → postgres-auth
+                                      campaign:5002 → postgres-campaign
 ```
 
 | Componente | Ficheiro / serviço |

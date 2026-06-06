@@ -5,7 +5,6 @@ from services.campaign.models.campaign import (
     TargetGroup,
     TrackingLink,
 )
-from services.campaign.models.revoked_token import RevokedToken
 
 __all__ = [
     "Campaign",
@@ -13,5 +12,4 @@ __all__ = [
     "Target",
     "TrackingLink",
     "Interaction",
-    "RevokedToken",
 ]
