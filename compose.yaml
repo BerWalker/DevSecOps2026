@@ -9,6 +9,8 @@ services:
     depends_on:
       auth:
         condition: service_started
+      campaign:
+        condition: service_started
 
   auth:
     build:
@@ -21,6 +23,22 @@ services:
       POSTGRES_HOST: postgres
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       AUTH_SERVICE_PORT: "5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  campaign:
+    build:
+      context: .
+      dockerfile: services/campaign/Dockerfile
+    container_name: campaign_service
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CAMPAIGN_SERVICE_PORT: "5002"
+      TRACKING_BASE_URL: http://localhost:${GATEWAY_PORT:-5000}
     depends_on:
       postgres:
         condition: service_healthy
