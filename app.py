@@ -37,55 +37,6 @@ def update_delete_operator(operator_id):
 # SERVIÇO DE CAMPANHAS (E ALVOS)
 # ==========================================
 
-# RF03: Criar campanha 
-@app.route('/api/campaigns', methods=['GET', 'POST'])
-def manage_campaigns():
-    if request.method == 'POST':
-        return jsonify({
-            "status": "success",
-            "message": "Campanha criada com sucesso.",
-            "data": {"id": 101, "nome": "Campanha Natal", "status": "Rascunho"}
-        }), 201
-        
-    return jsonify({
-        "status": "success",
-        "data": [
-            {"id": 101, "nome": "Campanha Natal", "status": "Ativa"}
-        ]
-    }), 200
-
-# RF04: Gestão de alvos 
-@app.route('/api/campaigns/<int:campaign_id>/targets', methods=['GET', 'POST'])
-def manage_targets(campaign_id):
-    if request.method == 'POST':
-        return jsonify({
-            "status": "success",
-            "message": "Alvo adicionado à campanha com sucesso.",
-            "data": {"id": 50, "nome": "João Silva", "email": "joao@empresa.com"}
-        }), 201
-        
-    return jsonify({
-        "status": "success",
-        "data": [
-            {"id": 50, "nome": "João Silva", "email": "joao@empresa.com"}
-        ]
-    }), 200
-
-@app.route('/api/campaigns/<int:campaign_id>/targets/import', methods=['POST'])
-def import_targets(campaign_id):
-    return jsonify({
-        "status": "success",
-        "message": "150 alvos importados com sucesso para a campanha."
-    }), 201
-
-# RF05: Gerar links de rastreamento 
-@app.route('/api/campaigns/<int:campaign_id>/links/generate', methods=['POST'])
-def generate_links(campaign_id):
-    return jsonify({
-        "status": "success",
-        "message": "Links de rastreamento gerados para todos os alvos da campanha."
-    }), 200
-
 # RF06: Enviar e-mails simulados 
 @app.route('/api/campaigns/<int:campaign_id>/send', methods=['POST'])
 def send_emails(campaign_id):
@@ -99,29 +50,6 @@ def send_emails(campaign_id):
 # ==========================================
 # SERVIÇO DE ANALYTICS E TRACKING
 # ==========================================
-
-# RF07: Rastrear interações 
-@app.route('/track/<string:token>', methods=['GET'])
-def track_click(token):
-    # Como é um acesso do alvo (passivo) não retorna JSON na prática (faria redirecionamento ou imagem de 1px)
-    return jsonify({
-        "status": "success",
-        "message": "Interação registrada (IP, Geolocalização, Timestamp).",
-        "token_rastreado": token
-    }), 200
-
-# RF08: Dashboard agregado 
-@app.route('/api/analytics/dashboard', methods=['GET'])
-def aggregate_dashboard():
-    return jsonify({
-        "status": "success",
-        "data": {
-            "total_campanhas": 12,
-            "total_emails_enviados": 4500,
-            "taxa_clique_geral": "15.4%",
-            "vulnerabilidade_risco": "Médio"
-        }
-    }), 200
 
 # RF09: Dashboard por campanha 
 @app.route('/api/analytics/campaigns/<int:campaign_id>', methods=['GET'])
