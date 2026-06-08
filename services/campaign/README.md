@@ -8,7 +8,7 @@ Base URL (via gateway): `http://localhost:5000`
 
 Rotas `/api/campaigns*` exigem JWT do serviço auth (`Authorization: Bearer <token>`). A validação é stateless (assinatura e expiração); revogação de logout é gerida apenas pelo serviço auth.
 
-Rota pública de tracking: `GET|POST /track/<token>` (sem autenticação).
+O rastreamento de cliques é feito pelo serviço **analytics** (`/track/<token>`). Este serviço expõe apenas a API interna de resolução de tokens.
 
 ## Modelo
 
@@ -18,7 +18,7 @@ Rota pública de tracking: `GET|POST /track/<token>` (sem autenticação).
 | `TargetGroup` | Grupo de alvos dentro da campanha |
 | `Target` | Alvo (e-mail + nome opcional) |
 | `TrackingLink` | Token único por alvo |
-| `Interaction` | Clique/abertura/etc. registrado no link |
+| `Interaction` | Legado (eventos são registrados no serviço analytics) |
 
 Ao criar ou atualizar `target_groups`, um link de rastreamento é gerado automaticamente para cada alvo.
 
@@ -31,9 +31,7 @@ Ao criar ou atualizar `target_groups`, um link de rastreamento é gerado automat
 | `GET` | `/api/campaigns/<id>` | Sim |
 | `PUT` | `/api/campaigns/<id>` | Sim |
 | `DELETE` | `/api/campaigns/<id>` | Sim |
-| `GET`/`POST` | `/track/<token>?event=click` | Não |
-
-`event` permitidos: `click` (padrão), `open`, `submit`.
+| `GET` | `/api/internal/tracking-links/<token>` | `X-Internal-Key` (serviço analytics) |
 
 ## Exemplo — criar campanha
 
@@ -58,12 +56,6 @@ Authorization: Bearer <token>
 
 Resposta (`201`) inclui `target_groups[].targets[].tracking.url` — link único por alvo.
 
-## Exemplo — registrar clique
-
-```http
-GET http://localhost:5000/track/<token>?event=click
-```
-
 ## Variáveis de ambiente
 
 | Variável | Descrição |
@@ -72,6 +64,7 @@ GET http://localhost:5000/track/<token>?event=click
 | `JWT_SECRET_KEY` | Mesmo segredo do auth |
 | `CAMPAIGN_SERVICE_PORT` | Porta interna (padrão `5002`) |
 | `TRACKING_BASE_URL` | Base pública dos links (padrão `http://localhost:5000`) |
+| `INTERNAL_API_KEY` | Segredo para API interna (analytics) |
 
 ## Subir com Docker
 

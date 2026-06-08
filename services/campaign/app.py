@@ -6,7 +6,7 @@ from services.campaign.config import Config
 from services.campaign.extensions import db, migrate
 from services.campaign import models
 from services.campaign.routes.campaigns import campaigns_bp
-from services.campaign.routes.tracking import tracking_bp
+from services.campaign.routes.internal import internal_bp
 
 
 def create_app(config_class: type = Config) -> Flask:
@@ -20,7 +20,7 @@ def create_app(config_class: type = Config) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db, directory="services/campaign/migrations")
     app.register_blueprint(campaigns_bp)
-    app.register_blueprint(tracking_bp)
+    app.register_blueprint(internal_bp)
 
     return app
 

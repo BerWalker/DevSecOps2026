@@ -7,13 +7,13 @@ load_dotenv()
 
 class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL") or os.getenv(
-        "CAMPAIGN_DATABASE_URL", ""
+        "ANALYTICS_DATABASE_URL", ""
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
     JWT_ALGORITHM = "HS256"
-    TRACKING_BASE_URL = os.getenv(
-        "TRACKING_BASE_URL", "http://localhost:5000"
+    CAMPAIGN_SERVICE_URL = os.getenv(
+        "CAMPAIGN_SERVICE_URL", "http://campaign:5002"
     ).rstrip("/")
     INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
 
