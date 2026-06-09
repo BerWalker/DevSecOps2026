@@ -62,6 +62,22 @@ services:
       campaign:
         condition: service_started
 
+  email:
+    build:
+      context: .
+      dockerfile: services/email/Dockerfile
+    container_name: email_service
+    env_file:
+      - .env
+    environment:
+      EMAIL_SERVICE_PORT: "5010"
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      GMAIL_FROM: ${GMAIL_FROM}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+    ports:
+      - "${EMAIL_SERVICE_PORT:-5010}:5010"
+
   postgres-auth:
     image: postgres:16
     container_name: auth_postgres
