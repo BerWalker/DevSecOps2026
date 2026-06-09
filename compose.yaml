@@ -13,6 +13,8 @@ services:
         condition: service_started
       analytics:
         condition: service_started
+      email:
+        condition: service_started
 
   auth:
     build:
@@ -75,8 +77,6 @@ services:
       GMAIL_FROM: ${GMAIL_FROM}
       GMAIL_USER: ${GMAIL_USER}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
-    ports:
-      - "${EMAIL_SERVICE_PORT:-5010}:5010"
 
   postgres-auth:
     image: postgres:16
