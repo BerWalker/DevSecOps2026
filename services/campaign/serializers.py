@@ -1,22 +1,12 @@
 from services.campaign.config import Config
-from services.campaign.models.campaign import Campaign, Interaction, Target, TrackingLink
+from services.campaign.models.campaign import Campaign, Target, TrackingLink
 
 
 def tracking_url(token: str) -> str:
     return f"{Config.TRACKING_BASE_URL}/track/{token}"
 
 
-def interaction_to_dict(interaction: Interaction) -> dict:
-    return {
-        "id": str(interaction.id),
-        "event_type": interaction.event_type,
-        "ip_address": interaction.ip_address,
-        "user_agent": interaction.user_agent,
-        "created_at": interaction.created_at.isoformat(),
-    }
-
-
-def target_to_dict(target: Target, include_interactions: bool = False) -> dict:
+def target_to_dict(target: Target) -> dict:
     data = {
         "id": str(target.id),
         "email": target.email,
@@ -26,17 +16,7 @@ def target_to_dict(target: Target, include_interactions: bool = False) -> dict:
         data["tracking"] = {
             "token": target.tracking_link.token,
             "url": tracking_url(target.tracking_link.token),
-            "interaction_count": len(target.tracking_link.interactions),
         }
-        if include_interactions:
-            interactions = sorted(
-                target.tracking_link.interactions,
-                key=lambda i: i.created_at,
-                reverse=True,
-            )
-            data["tracking"]["interactions"] = [
-                interaction_to_dict(i) for i in interactions
-            ]
     return data
 
 
@@ -55,7 +35,7 @@ def campaign_to_dict(campaign: Campaign, detailed: bool = False) -> dict:
             {
                 "id": str(group.id),
                 "name": group.name,
-                "targets": [target_to_dict(t, include_interactions=True) for t in group.targets],
+                "targets": [target_to_dict(t) for t in group.targets],
             }
             for group in campaign.target_groups
         ]
@@ -69,20 +49,8 @@ def campaign_to_dict(campaign: Campaign, detailed: bool = False) -> dict:
 
 def _campaign_stats(campaign: Campaign) -> dict:
     targets = [t for g in campaign.target_groups for t in g.targets]
-    interaction_count = sum(
-        len(t.tracking_link.interactions)
-        for t in targets
-        if t.tracking_link
-    )
-    clicked_targets = sum(
-        1
-        for t in targets
-        if t.tracking_link and len(t.tracking_link.interactions) > 0
-    )
     return {
         "target_count": len(targets),
-        "interaction_count": interaction_count,
-        "clicked_target_count": clicked_targets,
     }
 
 
@@ -92,3 +60,17 @@ def create_tracking_link(target: Target) -> TrackingLink:
         token=TrackingLink.generate_token(),
     )
     return link
+
+
+def build_target_email_html(
+    email_content: str, target: Target, tracking_link_url: str
+) -> str:
+    replacements = {
+        "{{tracking_url}}": tracking_link_url,
+        "{{target_name}}": target.name or "",
+        "{{target_email}}": target.email,
+    }
+    body = email_content
+    for placeholder, value in replacements.items():
+        body = body.replace(placeholder, value)
+    return body

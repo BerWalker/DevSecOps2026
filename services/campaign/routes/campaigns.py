@@ -9,7 +9,13 @@ from services.campaign.models.campaign import (
     TargetGroup,
     TrackingLink,
 )
-from services.campaign.serializers import campaign_to_dict, create_tracking_link
+from services.campaign.serializers import (
+    build_target_email_html,
+    campaign_to_dict,
+    create_tracking_link,
+    tracking_url,
+)
+from services.campaign.email_client import EmailClientError, send_campaign_email
 from services.campaign.validation import (
     parse_target_groups,
     validate_campaign_name,
@@ -36,7 +42,6 @@ def _get_campaign_or_404(campaign_id: str):
             joinedload(Campaign.target_groups)
             .joinedload(TargetGroup.targets)
             .joinedload(Target.tracking_link)
-            .selectinload(TrackingLink.interactions)
         )
         .filter_by(id=campaign_uuid, created_by=g.user_id)
         .first()
@@ -192,7 +197,6 @@ def update_campaign(campaign_id: str):
             joinedload(Campaign.target_groups)
             .joinedload(TargetGroup.targets)
             .joinedload(Target.tracking_link)
-            .selectinload(TrackingLink.interactions)
         )
         .get(campaign.id)
     )
@@ -226,3 +230,75 @@ def delete_campaign(campaign_id: str):
             "message": "Campaign deleted successfully.",
         }
     ), 200
+
+
+@campaigns_bp.route("/<campaign_id>/send", methods=["POST"])
+@require_auth
+def send_campaign(campaign_id: str):
+    campaign, err = _get_campaign_or_404(campaign_id)
+    if err:
+        return err
+
+    targets = [target for group in campaign.target_groups for target in group.targets]
+    if not targets:
+        return _error("Campaign has no targets.", 400)
+
+    sent: list[str] = []
+    failed: list[dict] = []
+
+    for target in targets:
+        if not target.tracking_link:
+            failed.append(
+                {"email": target.email, "message": "Missing tracking link."}
+            )
+            continue
+
+        link_url = tracking_url(target.tracking_link.token)
+        html_body = build_target_email_html(campaign.email_content, target, link_url)
+
+        try:
+            send_campaign_email(
+                to=target.email,
+                subject=campaign.name,
+                html_body=html_body,
+                text_body=f"Open this link: {link_url}",
+            )
+            sent.append(target.email)
+        except EmailClientError as exc:
+            failed.append({"email": target.email, "message": str(exc)})
+
+    if not sent:
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "Failed to send campaign emails.",
+                    "data": {"sent_count": 0, "failed": failed},
+                }
+            ),
+            502,
+        )
+
+    status = "success" if not failed else "partial"
+    message = (
+        "Campaign emails sent successfully."
+        if not failed
+        else "Campaign emails sent with some failures."
+    )
+
+    return (
+        jsonify(
+            {
+                "status": status,
+                "message": message,
+                "data": {
+                    "campaign_id": str(campaign.id),
+                    "sent_count": len(sent),
+                    "failed_count": len(failed),
+                    "sent": sent,
+                    "failed": failed,
+                },
+            }
+        ),
+        200,
+    )

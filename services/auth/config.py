@@ -13,6 +13,7 @@ class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "3600"))
     JWT_ALGORITHM = "HS256"
+    INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
 
     @staticmethod
     def validate(required_for_runtime: bool = True) -> None:
@@ -23,6 +24,8 @@ class Config:
             missing.append("DATABASE_URL")
         if not Config.JWT_SECRET_KEY:
             missing.append("JWT_SECRET_KEY")
+        if not Config.INTERNAL_API_KEY:
+            missing.append("INTERNAL_API_KEY")
         if missing:
             raise RuntimeError(
                 f"Missing required environment variables: {', '.join(missing)}"

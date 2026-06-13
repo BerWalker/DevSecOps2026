@@ -1,26 +1,9 @@
 import uuid
 from functools import wraps
 
-import jwt
 from flask import g, jsonify, request
-from jwt.exceptions import InvalidTokenError
 
-from services.analytics.config import Config
-
-
-class TokenError(Exception):
-    pass
-
-
-def decode_access_token(token: str) -> dict:
-    try:
-        return jwt.decode(
-            token,
-            Config.JWT_SECRET_KEY,
-            algorithms=[Config.JWT_ALGORITHM],
-        )
-    except InvalidTokenError as exc:
-        raise TokenError("Invalid or expired token.") from exc
+from services.analytics.auth_client import AuthClientError, introspect_token
 
 
 def _extract_bearer_token() -> str | None:
@@ -47,8 +30,19 @@ def require_auth(f):
             )
 
         try:
-            payload = decode_access_token(token)
-        except TokenError:
+            token_data = introspect_token(token)
+        except AuthClientError:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Authentication service unavailable.",
+                    }
+                ),
+                503,
+            )
+
+        if not token_data:
             return (
                 jsonify(
                     {
@@ -59,7 +53,7 @@ def require_auth(f):
                 401,
             )
 
-        sub = payload.get("sub")
+        sub = token_data.get("sub")
         if not sub:
             return (
                 jsonify(

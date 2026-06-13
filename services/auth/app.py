@@ -6,6 +6,7 @@ from services.auth.config import Config
 from services.auth.extensions import db, migrate
 from services.auth import models
 from services.auth.routes.auth import auth_bp
+from services.auth.routes.internal import internal_bp
 
 
 def create_app(config_class: type = Config) -> Flask:
@@ -19,6 +20,7 @@ def create_app(config_class: type = Config) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db, directory="services/auth/migrations")
     app.register_blueprint(auth_bp)
+    app.register_blueprint(internal_bp)
 
     return app
 

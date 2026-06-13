@@ -16,6 +16,7 @@ class Config:
         "CAMPAIGN_SERVICE_URL", "http://campaign:5002"
     ).rstrip("/")
     INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+    GATEWAY_URL = os.getenv("GATEWAY_URL", "http://gateway").rstrip("/")
 
     @staticmethod
     def validate(required_for_runtime: bool = True) -> None:
@@ -28,6 +29,8 @@ class Config:
             missing.append("JWT_SECRET_KEY")
         if not Config.INTERNAL_API_KEY:
             missing.append("INTERNAL_API_KEY")
+        if not Config.GATEWAY_URL:
+            missing.append("GATEWAY_URL")
         if missing:
             raise RuntimeError(
                 f"Missing required environment variables: {', '.join(missing)}"
