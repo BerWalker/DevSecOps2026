@@ -1,0 +1,43 @@
+rules:
+  - id: flask-debug-enabled
+    patterns:
+      - pattern: $APP.run(..., debug=True, ...)
+    message: >
+      Flask is running with debug=True.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-489: Active Debug Code"
+
+  - id: hardcoded-secret-string
+    patterns:
+      - pattern: $VAR = "..."
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)(secret|password|api_key|token|private_key)
+    message: >
+      A variable name suggests it holds a secret is assigned a hardcoded
+      string literal.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-798: Use of Hard-coded Credentials"
+
+  - id: secret-env-hardcoded-default
+    patterns:
+      - pattern: os.getenv("$KEY", "$DEFAULT")
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i).*(SECRET|PASSWORD|API_KEY|TOKEN|PRIVATE_KEY).*
+      - metavariable-regex:
+          metavariable: $DEFAULT
+          regex: .+
+    message: >
+      `os.getenv("$KEY")` has a hardcoded default.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-798: Use of Hard-coded Credentials"
