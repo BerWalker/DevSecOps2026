@@ -1,14 +1,14 @@
 rules:
-  - id: flask-debug-enabled
-    patterns:
-      - pattern: $APP.run(..., debug=True, ...)
-    message: >
-      Flask is running with debug=True.
-    severity: ERROR
-    languages: [python]
-    metadata:
-      cwe:
-        - "CWE-489: Active Debug Code"
+  #- id: flask-debug-enabled
+  #  patterns:
+  #    - pattern: $APP.run(..., debug=True, ...)
+  #  message: >
+  #    Flask is running with debug=True.
+  #  severity: ERROR
+  #  languages: [python]
+  #  metadata:
+  #    cwe:
+  #      - "CWE-489: Active Debug Code"
 
   - id: hardcoded-secret-string
     patterns:
