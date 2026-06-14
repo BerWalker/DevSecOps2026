@@ -53,10 +53,24 @@
             </div>
             <div class="field">
               <label for="email_content">Conteúdo do e-mail (HTML)</label>
-              <textarea id="email_content" name="email_content" required></textarea>
+
+              <div class="tabs">
+                <button type="button" class="tab is-active" id="tab-code" data-tab="code">Código</button>
+                <button type="button" class="tab" id="tab-preview" data-tab="preview">Pré-visualização</button>
+              </div>
+
+              <div id="email-code-pane">
+                <textarea id="email_content" name="email_content" required></textarea>
+              </div>
+
+              <div id="email-preview-pane" class="preview-frame" hidden>
+                <iframe id="email-preview-frame" title="Pré-visualização do e-mail" sandbox=""></iframe>
+              </div>
+
               <p class="field__hint">
                 Use <code>{{tracking_url}}</code>, <code>{{target_name}}</code> e <code>{{target_email}}</code>
-                — são substituídos por alvo antes do envio.
+                — são substituídos por alvo antes do envio. A pré-visualização mostra estes valores
+                preenchidos com dados de exemplo.
               </p>
             </div>
           </div>
@@ -144,6 +158,40 @@
       }
       renderGroups();
     });
+
+    // --- alternância código / pré-visualização do e-mail ---
+    const tabCode = document.getElementById("tab-code");
+    const tabPreview = document.getElementById("tab-preview");
+    const codePane = document.getElementById("email-code-pane");
+    const previewPane = document.getElementById("email-preview-pane");
+    const previewFrame = document.getElementById("email-preview-frame");
+    const emailContentField = document.getElementById("email_content");
+
+    const SAMPLE_VALUES = {
+      "{{tracking_url}}": "https://exemplo.test/track/amostra-de-link",
+      "{{target_name}}": "Maria Souza",
+      "{{target_email}}": "maria.souza@empresa.com",
+    };
+
+    function renderPreview() {
+      let html = emailContentField.value || "";
+      for (const [placeholder, value] of Object.entries(SAMPLE_VALUES)) {
+        html = html.split(placeholder).join(value);
+      }
+      previewFrame.srcdoc = html;
+    }
+
+    function setActiveTab(tab) {
+      const isCode = tab === "code";
+      tabCode.classList.toggle("is-active", isCode);
+      tabPreview.classList.toggle("is-active", !isCode);
+      codePane.hidden = !isCode;
+      previewPane.hidden = isCode;
+      if (!isCode) renderPreview();
+    }
+
+    tabCode.addEventListener("click", () => setActiveTab("code"));
+    tabPreview.addEventListener("click", () => setActiveTab("preview"));
 
     document.getElementById("add-group-btn").addEventListener("click", () => {
       syncStateFromInputs();

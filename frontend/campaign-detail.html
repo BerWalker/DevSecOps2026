@@ -189,7 +189,18 @@
               <h2>Conteúdo do e-mail</h2>
             </div>
             <div class="panel__body">
-              <pre class="is-mono" style="white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--text-muted);">${escapeHtml(campaign.email_content)}</pre>
+              <div class="tabs">
+                <button type="button" class="tab is-active" id="detail-tab-code" data-tab="code">Código</button>
+                <button type="button" class="tab" id="detail-tab-preview" data-tab="preview">Pré-visualização</button>
+              </div>
+
+              <div id="detail-email-code-pane">
+                <pre class="is-mono" style="white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--text-muted); border: 1px solid var(--border-strong); border-radius: 0 var(--radius) var(--radius) var(--radius); padding: 11px; margin: 0;">${escapeHtml(campaign.email_content)}</pre>
+              </div>
+
+              <div id="detail-email-preview-pane" class="preview-frame" hidden>
+                <iframe id="detail-email-preview-frame" title="Pré-visualização do e-mail" sandbox=""></iframe>
+              </div>
             </div>
           </div>
         </div>
@@ -218,6 +229,42 @@
 
     function bindActions(campaign) {
       const actionAlert = document.getElementById("action-alert");
+
+      // --- alternância código / pré-visualização do conteúdo do e-mail ---
+      const detailTabCode = document.getElementById("detail-tab-code");
+      const detailTabPreview = document.getElementById("detail-tab-preview");
+      const detailCodePane = document.getElementById("detail-email-code-pane");
+      const detailPreviewPane = document.getElementById("detail-email-preview-pane");
+      const detailPreviewFrame = document.getElementById("detail-email-preview-frame");
+
+      const SAMPLE_VALUES = {
+        "{{tracking_url}}": "https://exemplo.test/track/amostra-de-link",
+        "{{target_name}}": "Maria Souza",
+        "{{target_email}}": "maria.souza@empresa.com",
+      };
+
+      function renderDetailPreview() {
+        let html = campaign.email_content || "";
+        for (const [placeholder, value] of Object.entries(SAMPLE_VALUES)) {
+          html = html.split(placeholder).join(value);
+        }
+        detailPreviewFrame.srcdoc = html;
+      }
+
+      detailTabCode.addEventListener("click", () => {
+        detailTabCode.classList.add("is-active");
+        detailTabPreview.classList.remove("is-active");
+        detailCodePane.hidden = false;
+        detailPreviewPane.hidden = true;
+      });
+
+      detailTabPreview.addEventListener("click", () => {
+        detailTabPreview.classList.add("is-active");
+        detailTabCode.classList.remove("is-active");
+        detailCodePane.hidden = true;
+        detailPreviewPane.hidden = false;
+        renderDetailPreview();
+      });
 
       document.getElementById("send-btn").addEventListener("click", async (event) => {
         const btn = event.currentTarget;
