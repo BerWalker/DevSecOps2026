@@ -61,7 +61,7 @@ def test_auth_campaign_track_analytics_flow():
             "target_groups": [
                 {
                     "name": "Group A",
-                    "targets": [{"email": "bernardoowalkerl@gmail.com", "name": "Target"}],
+                    "targets": [{"email": "target@email.com", "name": "Target"}],
                 }
             ],
         },
