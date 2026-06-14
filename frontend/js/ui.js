@@ -1,16 +1,16 @@
 /* ==========================================================================
-   ui.js — layout partilhado (sidebar/topbar) e utilitários de formatação
+   ui.js — shared layout (sidebar/topbar) and formatting utilities
    ========================================================================== */
 
 const NAV_ITEMS = [
-  { href: "dashboard.html", label: "Visão geral", glyph: "01" },
-  { href: "campaigns.html", label: "Campanhas", glyph: "02" },
+  { href: "dashboard.html", label: "Overview", glyph: "01" },
+  { href: "campaigns.html", label: "Campaigns", glyph: "02" },
 ];
 
 /**
- * Constrói o shell da aplicação (sidebar + topbar) dentro de #app-root.
- * @param {string} activeHref - ficheiro atual, para realçar o link ativo
- * @param {string} title - título mostrado na topbar
+ * Builds the application shell (sidebar + topbar) inside #app-root.
+ * @param {string} activeHref - current file, to highlight the active link
+ * @param {string} title - title shown in the topbar
  */
 function renderShell(activeHref, title) {
   const root = document.getElementById("app-root");
@@ -33,10 +33,10 @@ function renderShell(activeHref, title) {
         <nav>${navHtml}</nav>
         <div class="sidebar__footer">
           <div class="sidebar__user">
-            <span class="sidebar__user-label">Sessão</span>
+            <span class="sidebar__user-label">Session</span>
             ${escapeHtml(email)}
           </div>
-          <button class="btn btn--ghost btn--sm btn--full" id="logout-btn" type="button">Terminar sessão</button>
+          <button class="btn btn--ghost btn--sm btn--full" id="logout-btn" type="button">Sign out</button>
         </div>
       </aside>
       <div class="main">
@@ -57,12 +57,12 @@ async function handleLogout() {
   const btn = document.getElementById("logout-btn");
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "A terminar...";
+    btn.textContent = "Signing out...";
   }
   try {
     await Api.logout();
   } catch {
-    /* mesmo que falhe, limpamos a sessão localmente */
+    /* even if it fails, clear the local session */
   }
   Session.clear();
   window.location.href = "index.html";
@@ -78,7 +78,7 @@ function formatDateTime(iso) {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("pt-BR", {
+  return date.toLocaleString("en-US", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -97,7 +97,7 @@ function setTopbarMeta(text) {
   if (el) el.textContent = text;
 }
 
-/** Mostra um alerta dentro de um contentor; substitui o conteúdo anterior. */
+/** Shows an alert inside a container; replaces previous content. */
 function showAlert(container, message, variant = "error") {
   container.innerHTML = `<div class="alert alert--${variant}">${escapeHtml(message)}</div>`;
 }

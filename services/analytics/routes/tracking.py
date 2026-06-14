@@ -1,6 +1,6 @@
 import uuid
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, redirect, request
 
 from services.analytics.campaign_client import CampaignClientError, resolve_tracking_token
 from services.analytics.extensions import db
@@ -57,6 +57,15 @@ def track_interaction(token: str):
     except Exception:
         db.session.rollback()
         return jsonify({"status": "error", "message": "Internal server error."}), 500
+
+    redirect_url = (link_data.get("redirect_url") or "").strip()
+    if (
+        request.method == "GET"
+        and event_type == "click"
+        and redirect_url
+        and request.accept_mimetypes.best != "application/json"
+    ):
+        return redirect(redirect_url, code=302)
 
     return jsonify(
         {

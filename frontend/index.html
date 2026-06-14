@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Entrar — PhishGuard Console</title>
+  <title>Sign in — PhishGuard Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
@@ -16,27 +16,27 @@
         <span class="auth-box__brand-text">phishguard<span>/console</span></span>
       </div>
 
-      <h2>Entrar</h2>
-      <p class="auth-box__sub">Acesso à plataforma de simulação de phishing.</p>
+      <h2>Sign in</h2>
+      <p class="auth-box__sub">Access the phishing simulation platform.</p>
 
       <div id="form-alert"></div>
 
       <form id="login-form" novalidate>
         <div class="field">
-          <label for="email">E-mail</label>
+          <label for="email">Email</label>
           <input type="email" id="email" name="email" autocomplete="username" required />
         </div>
         <div class="field">
-          <label for="password">Senha</label>
+          <label for="password">Password</label>
           <input type="password" id="password" name="password" autocomplete="current-password" required />
         </div>
         <div class="btn-row">
-          <button type="submit" class="btn btn--primary btn--full" id="submit-btn">Entrar</button>
+          <button type="submit" class="btn btn--primary btn--full" id="submit-btn">Sign in</button>
         </div>
       </form>
 
       <p class="auth-box__switch">
-        Ainda não tem conta? <a href="register.html">Criar conta</a>
+        Don't have an account yet? <a href="register.html">Create account</a>
       </p>
     </div>
   </div>
@@ -49,10 +49,10 @@
     const params = new URLSearchParams(window.location.search);
     const alertBox = document.getElementById("form-alert");
     if (params.get("expired") === "1") {
-      showAlert(alertBox, "A sessão expirou. Entre novamente.", "info");
+      showAlert(alertBox, "Your session has expired. Please sign in again.", "info");
     }
     if (params.get("registered") === "1") {
-      showAlert(alertBox, "Conta criada com sucesso. Entre com as suas credenciais.", "ok");
+      showAlert(alertBox, "Account created successfully. Sign in with your credentials.", "ok");
     }
 
     const form = document.getElementById("login-form");
@@ -66,16 +66,16 @@
       const password = document.getElementById("password").value;
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "A entrar...";
+      submitBtn.textContent = "Signing in...";
 
       try {
         const result = await Api.login(email, password);
         Session.set(result.token, email);
         window.location.href = "dashboard.html";
       } catch (err) {
-        showAlert(alertBox, err.message || "Não foi possível entrar.", "error");
+        showAlert(alertBox, err.message || "Could not sign in.", "error");
         submitBtn.disabled = false;
-        submitBtn.textContent = "Entrar";
+        submitBtn.textContent = "Sign in";
       }
     });
   </script>

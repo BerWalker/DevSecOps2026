@@ -16,6 +16,7 @@ class Campaign(db.Model):
     )
     name: Mapped[str] = mapped_column(db.String(255), nullable=False)
     email_content: Mapped[str] = mapped_column(db.Text, nullable=False)
+    redirect_url: Mapped[str] = mapped_column(db.String(2048), nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True),

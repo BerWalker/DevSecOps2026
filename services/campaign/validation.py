@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from services.auth import email_validation
 
 
@@ -13,6 +15,21 @@ def validate_campaign_name(name: str) -> str | None:
 def validate_email_content(content: str) -> str | None:
     if not content or not content.strip():
         return "Email content is required."
+    return None
+
+
+def validate_redirect_url(url: str) -> str | None:
+    stripped = url.strip()
+    if not stripped:
+        return "Redirect URL is required."
+    if len(stripped) > 2048:
+        return "Redirect URL must be at most 2048 characters."
+
+    parsed = urlparse(stripped)
+    if parsed.scheme not in ("http", "https"):
+        return "Redirect URL must use http or https."
+    if not parsed.netloc:
+        return "Redirect URL must include a valid host."
     return None
 
 

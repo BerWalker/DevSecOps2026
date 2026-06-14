@@ -47,6 +47,7 @@ def resolve_tracking_link(token: str):
                 "target_email": target.email,
                 "target_name": target.name,
                 "owner_id": str(campaign.created_by),
+                "redirect_url": campaign.redirect_url,
             },
         }
     ), 200

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visão geral — PhishGuard Console</title>
+  <title>Overview — PhishGuard Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
@@ -15,18 +15,18 @@
   <script src="js/ui.js"></script>
   <script>
     Session.requireAuth();
-    const content = renderShell("dashboard.html", "Visão geral");
+    const content = renderShell("dashboard.html", "Overview");
 
     async function load() {
-      content.innerHTML = `<div class="loading">A carregar dados...</div>`;
+      content.innerHTML = `<div class="loading">Loading data...</div>`;
 
       try {
         const result = await Api.getDashboard();
         const data = result.data;
-        setTopbarMeta(`${data.total_campaigns} campanha(s)`);
+        setTopbarMeta(`${data.total_campaigns} campaign(s)`);
         render(data);
       } catch (err) {
-        content.innerHTML = `<div class="alert alert--error">${escapeHtml(err.message || "Não foi possível carregar a visão geral.")}</div>`;
+        content.innerHTML = `<div class="alert alert--error">${escapeHtml(err.message || "Could not load overview.")}</div>`;
       }
     }
 
@@ -52,44 +52,44 @@
         ? `<table>
             <thead>
               <tr>
-                <th>Campanha</th>
-                <th class="is-num">Alvos</th>
-                <th class="is-num">Cliques</th>
-                <th class="is-num">Alvos com clique</th>
-                <th>Taxa de clique</th>
+                <th>Campaign</th>
+                <th class="is-num">Targets</th>
+                <th class="is-num">Clicks</th>
+                <th class="is-num">Targets with clicks</th>
+                <th>Click rate</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>`
         : `<div class="empty">
-            <div class="empty__title">Ainda não há campanhas</div>
-            <div class="empty__sub">Crie a primeira campanha para começar a recolher métricas.</div>
+            <div class="empty__title">No campaigns yet</div>
+            <div class="empty__sub">Create your first campaign to start collecting metrics.</div>
           </div>`;
 
       content.innerHTML = `
         <div class="stat-row">
           <div class="stat">
-            <div class="stat__label">Campanhas</div>
+            <div class="stat__label">Campaigns</div>
             <div class="stat__value">${data.total_campaigns}</div>
           </div>
           <div class="stat">
-            <div class="stat__label">Alvos totais</div>
+            <div class="stat__label">Total targets</div>
             <div class="stat__value">${data.total_targets}</div>
           </div>
           <div class="stat">
-            <div class="stat__label">Cliques registados</div>
+            <div class="stat__label">Recorded clicks</div>
             <div class="stat__value">${data.total_clicks}</div>
           </div>
           <div class="stat">
-            <div class="stat__label">Taxa de clique geral</div>
-            <div class="stat__value">${formatPercent(data.click_rate)} <small>/ ${data.clicked_target_count} alvos</small></div>
+            <div class="stat__label">Overall click rate</div>
+            <div class="stat__value">${formatPercent(data.click_rate)} <small>/ ${data.clicked_target_count} targets</small></div>
           </div>
         </div>
 
         <div class="panel">
           <div class="panel__header">
-            <h2>Campanhas por desempenho</h2>
-            <a class="btn btn--sm" href="campaigns.html">Ver todas</a>
+            <h2>Campaigns by performance</h2>
+            <a class="btn btn--sm" href="campaigns.html">View all</a>
           </div>
           <div class="panel__body--flush">
             ${tableOrEmpty}

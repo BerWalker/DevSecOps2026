@@ -58,6 +58,7 @@ def test_auth_campaign_track_analytics_flow():
         body={
             "name": "Integration Campaign",
             "email_content": "<p>Track: {{tracking_url}}</p>",
+            "redirect_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             "target_groups": [
                 {
                     "name": "Group A",
@@ -78,7 +79,11 @@ def test_auth_campaign_track_analytics_flow():
     assert status in (200, 502)
     assert "sent_count" in send_result.get("data", {}) or send_result["status"] == "error"
 
-    status, track = _request("GET", tracking_url.replace(BASE_URL, "") + "?event=click")
+    status, track = _request(
+        "GET",
+        tracking_url.replace(BASE_URL, "") + "?event=click",
+        headers={"Accept": "application/json"},
+    )
     assert status == 200
     assert track["data"]["event_type"] == "click"
 

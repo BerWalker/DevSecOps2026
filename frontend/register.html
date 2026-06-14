@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Criar conta — PhishGuard Console</title>
+  <title>Create account — PhishGuard Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
@@ -16,32 +16,32 @@
         <span class="auth-box__brand-text">phishguard<span>/console</span></span>
       </div>
 
-      <h2>Criar conta</h2>
-      <p class="auth-box__sub">Registe-se para gerir campanhas de simulação.</p>
+      <h2>Create account</h2>
+      <p class="auth-box__sub">Sign up to manage simulation campaigns.</p>
 
       <div id="form-alert"></div>
 
       <form id="register-form" novalidate>
         <div class="field">
-          <label for="name">Nome</label>
+          <label for="name">Name</label>
           <input type="text" id="name" name="name" autocomplete="name" />
         </div>
         <div class="field">
-          <label for="email">E-mail</label>
+          <label for="email">Email</label>
           <input type="email" id="email" name="email" autocomplete="username" required />
         </div>
         <div class="field">
-          <label for="password">Senha</label>
+          <label for="password">Password</label>
           <input type="password" id="password" name="password" autocomplete="new-password" required />
-          <p class="field__hint">Mínimo 8 caracteres, com 1 maiúscula, 1 número e 1 símbolo.</p>
+          <p class="field__hint">Minimum 8 characters, with 1 uppercase letter, 1 number, and 1 symbol.</p>
         </div>
         <div class="btn-row">
-          <button type="submit" class="btn btn--primary btn--full" id="submit-btn">Criar conta</button>
+          <button type="submit" class="btn btn--primary btn--full" id="submit-btn">Create account</button>
         </div>
       </form>
 
       <p class="auth-box__switch">
-        Já tem conta? <a href="index.html">Entrar</a>
+        Already have an account? <a href="index.html">Sign in</a>
       </p>
     </div>
   </div>
@@ -64,15 +64,15 @@
       const password = document.getElementById("password").value;
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "A criar...";
+      submitBtn.textContent = "Creating...";
 
       try {
         await Api.register(email, password, name);
         window.location.href = "index.html?registered=1";
       } catch (err) {
-        showAlert(alertBox, err.message || "Não foi possível criar a conta.", "error");
+        showAlert(alertBox, err.message || "Could not create account.", "error");
         submitBtn.disabled = false;
-        submitBtn.textContent = "Criar conta";
+        submitBtn.textContent = "Create account";
       }
     });
   </script>

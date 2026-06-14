@@ -20,6 +20,7 @@ from services.campaign.validation import (
     parse_target_groups,
     validate_campaign_name,
     validate_email_content,
+    validate_redirect_url,
 )
 
 campaigns_bp = Blueprint("campaigns", __name__, url_prefix="/api/campaigns")
@@ -102,6 +103,13 @@ def create_campaign():
     if content_error:
         return _error(content_error, 400)
 
+    redirect_url = data.get("redirect_url") or ""
+    if not isinstance(redirect_url, str):
+        return _error("Redirect URL is required.", 400)
+    redirect_error = validate_redirect_url(redirect_url)
+    if redirect_error:
+        return _error(redirect_error, 400)
+
     groups, groups_error = parse_target_groups(data.get("target_groups", []))
     if groups_error:
         return _error(groups_error, 400)
@@ -109,6 +117,7 @@ def create_campaign():
     campaign = Campaign(
         name=name.strip(),
         email_content=email_content,
+        redirect_url=redirect_url.strip(),
         created_by=g.user_id,
     )
     _apply_target_groups(campaign, groups or [])
@@ -179,6 +188,14 @@ def update_campaign(campaign_id: str):
         if content_error:
             return _error(content_error, 400)
         campaign.email_content = data["email_content"]
+
+    if "redirect_url" in data:
+        if not isinstance(data["redirect_url"], str):
+            return _error("Redirect URL is required.", 400)
+        redirect_error = validate_redirect_url(data["redirect_url"])
+        if redirect_error:
+            return _error(redirect_error, 400)
+        campaign.redirect_url = data["redirect_url"].strip()
 
     if "target_groups" in data:
         groups, groups_error = parse_target_groups(data["target_groups"])

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   api.js — cliente HTTP para o API Gateway
+   api.js — HTTP client for the API Gateway
    ========================================================================== */
 
 const GATEWAY_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
@@ -48,13 +48,13 @@ class ApiError extends Error {
 }
 
 /**
- * Executa um pedido contra o gateway.
- * @param {string} path - caminho a partir de GATEWAY_URL, ex. "/api/auth/login"
+ * Executes a request against the gateway.
+ * @param {string} path - path from GATEWAY_URL, e.g. "/api/auth/login"
  * @param {object} options
  * @param {string} [options.method]
  * @param {object} [options.body]
- * @param {boolean} [options.auth] - inclui o cabeçalho Authorization
- * @param {boolean} [options.raw] - devolve a Response em vez de JSON (ex. CSV)
+ * @param {boolean} [options.auth] - includes the Authorization header
+ * @param {boolean} [options.raw] - returns the Response instead of JSON (e.g. CSV)
  */
 async function apiRequest(path, { method = "GET", body, auth = false, raw = false } = {}) {
   const headers = {};
@@ -73,7 +73,7 @@ async function apiRequest(path, { method = "GET", body, auth = false, raw = fals
     });
   } catch (networkError) {
     throw new ApiError(
-      "Não foi possível contactar o servidor. Verifique se o stack Docker está em execução.",
+      "Could not reach the server. Check that the Docker stack is running.",
       0,
       null
     );
@@ -82,12 +82,12 @@ async function apiRequest(path, { method = "GET", body, auth = false, raw = fals
   if (response.status === 401 && auth) {
     Session.clear();
     window.location.href = "index.html?expired=1";
-    throw new ApiError("Sessão expirada.", 401, null);
+    throw new ApiError("Session expired.", 401, null);
   }
 
   if (raw) {
     if (!response.ok) {
-      throw new ApiError("Falha ao obter o ficheiro.", response.status, null);
+      throw new ApiError("Failed to retrieve file.", response.status, null);
     }
     return response;
   }
@@ -96,11 +96,11 @@ async function apiRequest(path, { method = "GET", body, auth = false, raw = fals
   try {
     payload = await response.json();
   } catch {
-    /* sem corpo JSON */
+    /* no JSON body */
   }
 
   if (!response.ok || (payload && payload.status === "error")) {
-    const message = (payload && payload.message) || `Erro inesperado (${response.status}).`;
+    const message = (payload && payload.message) || `Unexpected error (${response.status}).`;
     throw new ApiError(message, response.status, payload);
   }
 

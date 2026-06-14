@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Campanhas — PhishGuard Console</title>
+  <title>Campaigns — PhishGuard Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
@@ -15,18 +15,18 @@
   <script src="js/ui.js"></script>
   <script>
     Session.requireAuth();
-    const content = renderShell("campaigns.html", "Campanhas");
+    const content = renderShell("campaigns.html", "Campaigns");
 
     async function load() {
-      content.innerHTML = `<div class="loading">A carregar campanhas...</div>`;
+      content.innerHTML = `<div class="loading">Loading campaigns...</div>`;
 
       try {
         const result = await Api.listCampaigns();
         const campaigns = result.data || [];
-        setTopbarMeta(`${campaigns.length} campanha(s)`);
+        setTopbarMeta(`${campaigns.length} campaign(s)`);
         render(campaigns);
       } catch (err) {
-        content.innerHTML = `<div class="alert alert--error">${escapeHtml(err.message || "Não foi possível carregar as campanhas.")}</div>`;
+        content.innerHTML = `<div class="alert alert--error">${escapeHtml(err.message || "Could not load campaigns.")}</div>`;
       }
     }
 
@@ -39,7 +39,7 @@
             <td class="is-num">${c.target_count}</td>
             <td class="is-muted">${formatDateTime(c.updated_at)}</td>
             <td>
-              <a class="btn btn--sm" href="campaign-form.html?id=${encodeURIComponent(c.id)}">Editar</a>
+              <a class="btn btn--sm" href="campaign-form.html?id=${encodeURIComponent(c.id)}">Edit</a>
             </td>
           </tr>
         `)
@@ -49,25 +49,25 @@
         ? `<table>
             <thead>
               <tr>
-                <th>Nome</th>
-                <th class="is-num">Grupos</th>
-                <th class="is-num">Alvos</th>
-                <th>Atualizada em</th>
+                <th>Name</th>
+                <th class="is-num">Groups</th>
+                <th class="is-num">Targets</th>
+                <th>Updated on</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>`
         : `<div class="empty">
-            <div class="empty__title">Nenhuma campanha criada</div>
-            <div class="empty__sub">Use "Nova campanha" para definir conteúdo de e-mail e grupos de alvos.</div>
+            <div class="empty__title">No campaigns created</div>
+            <div class="empty__sub">Use "New campaign" to define email content and target groups.</div>
           </div>`;
 
       content.innerHTML = `
         <div class="panel">
           <div class="panel__header">
-            <h2>Todas as campanhas</h2>
-            <a class="btn btn--primary btn--sm" href="campaign-form.html">Nova campanha</a>
+            <h2>All campaigns</h2>
+            <a class="btn btn--primary btn--sm" href="campaign-form.html">New campaign</a>
           </div>
           <div class="panel__body--flush">
             ${tableOrEmpty}

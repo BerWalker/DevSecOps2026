@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Campanha — PhishGuard Console</title>
+  <title>Campaign — PhishGuard Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
@@ -20,7 +20,7 @@
     const campaignId = params.get("id");
     const isEdit = !!campaignId;
 
-    const content = renderShell("campaigns.html", isEdit ? "Editar campanha" : "Nova campanha");
+    const content = renderShell("campaigns.html", isEdit ? "Edit campaign" : "New campaign");
 
     let groupCounter = 0;
     let targetCounter = 0;
@@ -35,7 +35,7 @@
       return { uid: `g${groupCounter}`, name: "", targets: [emptyTarget()] };
     }
 
-    // Estado local dos grupos de alvos
+    // Local state for target groups
     let groups = [emptyGroup()];
 
     content.innerHTML = `
@@ -44,19 +44,28 @@
       <form id="campaign-form" novalidate>
         <div class="panel">
           <div class="panel__header">
-            <h2>Detalhes</h2>
+            <h2>Details</h2>
           </div>
           <div class="panel__body">
             <div class="field">
-              <label for="name">Nome da campanha</label>
+              <label for="name">Campaign name</label>
               <input type="text" id="name" name="name" required maxlength="255" />
             </div>
             <div class="field">
-              <label for="email_content">Conteúdo do e-mail (HTML)</label>
+              <label for="redirect_url">Redirect URL after click</label>
+              <input type="url" id="redirect_url" name="redirect_url" required maxlength="2048"
+                     placeholder="https://www.youtube.com/watch?v=..." />
+              <p class="field__hint">
+                When a target clicks the tracking link in the email, they are redirected here
+                after the click is recorded (e.g. YouTube, an internal page, or any https site).
+              </p>
+            </div>
+            <div class="field">
+              <label for="email_content">Email content (HTML)</label>
 
               <div class="tabs">
-                <button type="button" class="tab is-active" id="tab-code" data-tab="code">Código</button>
-                <button type="button" class="tab" id="tab-preview" data-tab="preview">Pré-visualização</button>
+                <button type="button" class="tab is-active" id="tab-code" data-tab="code">Code</button>
+                <button type="button" class="tab" id="tab-preview" data-tab="preview">Preview</button>
               </div>
 
               <div id="email-code-pane">
@@ -64,13 +73,13 @@
               </div>
 
               <div id="email-preview-pane" class="preview-frame" hidden>
-                <iframe id="email-preview-frame" title="Pré-visualização do e-mail" sandbox=""></iframe>
+                <iframe id="email-preview-frame" title="Email preview" sandbox=""></iframe>
               </div>
 
               <p class="field__hint">
-                Use <code>{{tracking_url}}</code>, <code>{{target_name}}</code> e <code>{{target_email}}</code>
-                — são substituídos por alvo antes do envio. A pré-visualização mostra estes valores
-                preenchidos com dados de exemplo.
+                Use <code>{{tracking_url}}</code>, <code>{{target_name}}</code>, and <code>{{target_email}}</code>
+                — they are replaced per target before sending. The preview shows these values
+                filled with sample data.
               </p>
             </div>
           </div>
@@ -78,16 +87,16 @@
 
         <div class="panel">
           <div class="panel__header">
-            <h2>Grupos de alvos</h2>
-            <button type="button" class="btn btn--sm" id="add-group-btn">Adicionar grupo</button>
+            <h2>Target groups</h2>
+            <button type="button" class="btn btn--sm" id="add-group-btn">Add group</button>
           </div>
           <div class="panel__body" id="groups-container"></div>
         </div>
 
         <div class="btn-row">
-          <button type="submit" class="btn btn--primary" id="submit-btn">${isEdit ? "Guardar alterações" : "Criar campanha"}</button>
-          <a class="btn btn--ghost" href="campaigns.html">Cancelar</a>
-          ${isEdit ? `<button type="button" class="btn btn--danger" id="delete-btn" style="margin-left:auto">Eliminar campanha</button>` : ""}
+          <button type="submit" class="btn btn--primary" id="submit-btn">${isEdit ? "Save changes" : "Create campaign"}</button>
+          <a class="btn btn--ghost" href="campaigns.html">Cancel</a>
+          ${isEdit ? `<button type="button" class="btn btn--danger" id="delete-btn" style="margin-left:auto">Delete campaign</button>` : ""}
         </div>
       </form>
     `;
@@ -100,22 +109,22 @@
         .map((group, gi) => `
           <div class="group" data-group="${group.uid}">
             <div class="group__header">
-              <input type="text" placeholder="Nome do grupo (ex.: Financeiro)" maxlength="255"
+              <input type="text" placeholder="Group name (e.g. Finance)" maxlength="255"
                      value="${escapeHtml(group.name)}" data-role="group-name" data-group="${group.uid}" />
-              ${groups.length > 1 ? `<button type="button" class="icon-btn" data-action="remove-group" data-group="${group.uid}" title="Remover grupo">×</button>` : ""}
+              ${groups.length > 1 ? `<button type="button" class="icon-btn" data-action="remove-group" data-group="${group.uid}" title="Remove group">×</button>` : ""}
             </div>
             <div class="group__body">
               ${group.targets.map((target) => `
                 <div class="target-row" data-target="${target.uid}">
-                  <input type="email" placeholder="email@empresa.com" required
+                  <input type="email" placeholder="email@company.com" required
                          value="${escapeHtml(target.email)}" data-role="target-email" data-group="${group.uid}" data-target="${target.uid}" />
-                  <input type="text" placeholder="Nome (opcional)" maxlength="255"
+                  <input type="text" placeholder="Name (optional)" maxlength="255"
                          value="${escapeHtml(target.name)}" data-role="target-name" data-group="${group.uid}" data-target="${target.uid}" />
-                  ${group.targets.length > 1 ? `<button type="button" class="icon-btn" data-action="remove-target" data-group="${group.uid}" data-target="${target.uid}" title="Remover alvo">×</button>` : `<span></span>`}
+                  ${group.targets.length > 1 ? `<button type="button" class="icon-btn" data-action="remove-target" data-group="${group.uid}" data-target="${target.uid}" title="Remove target">×</button>` : `<span></span>`}
                 </div>
               `).join("")}
               <div class="group__actions">
-                <button type="button" class="btn btn--sm" data-action="add-target" data-group="${group.uid}">Adicionar alvo</button>
+                <button type="button" class="btn btn--sm" data-action="add-target" data-group="${group.uid}">Add target</button>
               </div>
             </div>
           </div>
@@ -159,7 +168,7 @@
       renderGroups();
     });
 
-    // --- alternância código / pré-visualização do e-mail ---
+    // --- code / email preview toggle ---
     const tabCode = document.getElementById("tab-code");
     const tabPreview = document.getElementById("tab-preview");
     const codePane = document.getElementById("email-code-pane");
@@ -168,9 +177,9 @@
     const emailContentField = document.getElementById("email_content");
 
     const SAMPLE_VALUES = {
-      "{{tracking_url}}": "https://exemplo.test/track/amostra-de-link",
-      "{{target_name}}": "Maria Souza",
-      "{{target_email}}": "maria.souza@empresa.com",
+      "{{tracking_url}}": "https://example.test/track/sample-link",
+      "{{target_name}}": "Jane Doe",
+      "{{target_email}}": "jane.doe@company.com",
     };
 
     function renderPreview() {
@@ -201,13 +210,14 @@
 
     renderGroups();
 
-    // --- carregar dados existentes em modo edição ---
+    // --- load existing data in edit mode ---
     async function loadExisting() {
       content.querySelectorAll("input, textarea, button").forEach((el) => (el.disabled = true));
       try {
         const result = await Api.getCampaign(campaignId);
         const campaign = result.data;
         document.getElementById("name").value = campaign.name;
+        document.getElementById("redirect_url").value = campaign.redirect_url || "";
         document.getElementById("email_content").value = campaign.email_content;
 
         if (campaign.target_groups && campaign.target_groups.length) {
@@ -227,7 +237,7 @@
         }
         renderGroups();
       } catch (err) {
-        showAlert(alertBox, err.message || "Não foi possível carregar a campanha.", "error");
+        showAlert(alertBox, err.message || "Could not load campaign.", "error");
       } finally {
         content.querySelectorAll("input, textarea, button").forEach((el) => (el.disabled = false));
       }
@@ -235,11 +245,12 @@
 
     if (isEdit) loadExisting();
 
-    // --- submissão ---
+    // --- submission ---
     function buildPayload() {
       syncStateFromInputs();
 
       const name = document.getElementById("name").value.trim();
+      const redirect_url = document.getElementById("redirect_url").value.trim();
       const email_content = document.getElementById("email_content").value;
 
       const target_groups = groups
@@ -251,7 +262,7 @@
         }))
         .filter((g) => g.name && g.targets.length);
 
-      return { name, email_content, target_groups };
+      return { name, redirect_url, email_content, target_groups };
     }
 
     const form = document.getElementById("campaign-form");
@@ -263,16 +274,20 @@
 
       const payload = buildPayload();
       if (!payload.name) {
-        showAlert(alertBox, "Indique um nome para a campanha.", "error");
+        showAlert(alertBox, "Enter a campaign name.", "error");
+        return;
+      }
+      if (!payload.redirect_url) {
+        showAlert(alertBox, "Enter the redirect URL after click.", "error");
         return;
       }
       if (!payload.email_content.trim()) {
-        showAlert(alertBox, "Indique o conteúdo do e-mail.", "error");
+        showAlert(alertBox, "Enter the email content.", "error");
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "A guardar...";
+      submitBtn.textContent = "Saving...";
 
       try {
         if (isEdit) {
@@ -283,25 +298,25 @@
           window.location.href = `campaign-detail.html?id=${encodeURIComponent(result.data.id)}`;
         }
       } catch (err) {
-        showAlert(alertBox, err.message || "Não foi possível guardar a campanha.", "error");
+        showAlert(alertBox, err.message || "Could not save campaign.", "error");
         submitBtn.disabled = false;
-        submitBtn.textContent = isEdit ? "Guardar alterações" : "Criar campanha";
+        submitBtn.textContent = isEdit ? "Save changes" : "Create campaign";
       }
     });
 
     const deleteBtn = document.getElementById("delete-btn");
     if (deleteBtn) {
       deleteBtn.addEventListener("click", async () => {
-        if (!confirm("Eliminar esta campanha? Esta ação não pode ser desfeita.")) return;
+        if (!confirm("Delete this campaign? This action cannot be undone.")) return;
         deleteBtn.disabled = true;
-        deleteBtn.textContent = "A eliminar...";
+        deleteBtn.textContent = "Deleting...";
         try {
           await Api.deleteCampaign(campaignId);
           window.location.href = "campaigns.html";
         } catch (err) {
-          showAlert(alertBox, err.message || "Não foi possível eliminar a campanha.", "error");
+          showAlert(alertBox, err.message || "Could not delete campaign.", "error");
           deleteBtn.disabled = false;
-          deleteBtn.textContent = "Eliminar campanha";
+          deleteBtn.textContent = "Delete campaign";
         }
       });
     }

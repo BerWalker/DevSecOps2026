@@ -25,6 +25,7 @@ def campaign_to_dict(campaign: Campaign, detailed: bool = False) -> dict:
         "id": str(campaign.id),
         "name": campaign.name,
         "email_content": campaign.email_content,
+        "redirect_url": campaign.redirect_url,
         "created_by": str(campaign.created_by),
         "created_at": campaign.created_at.isoformat(),
         "updated_at": campaign.updated_at.isoformat(),
