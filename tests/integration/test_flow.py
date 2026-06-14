@@ -51,6 +51,20 @@ def test_auth_campaign_track_analytics_flow():
     token = login["token"]
     auth_headers = {"Authorization": f"Bearer {token}"}
 
+    status, refreshed = _request("POST", "/api/auth/refresh", headers=auth_headers)
+    assert status == 200
+    assert refreshed["token"]
+    new_token = refreshed["token"]
+    new_auth_headers = {"Authorization": f"Bearer {new_token}"}
+
+    status, _ = _request("GET", "/api/campaigns", headers=auth_headers)
+    assert status == 401
+
+    status, _ = _request("GET", "/api/campaigns", headers=new_auth_headers)
+    assert status == 200
+
+    auth_headers = new_auth_headers
+
     status, campaign = _request(
         "POST",
         "/api/campaigns",

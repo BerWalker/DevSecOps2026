@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
@@ -103,6 +104,58 @@ def login():
             {
                 "status": "success",
                 "message": "Login successful.",
+                "token": token,
+                "expires_in": expires_in,
+            }
+        ),
+        200,
+    )
+
+
+@auth_bp.route("/refresh", methods=["POST"])
+def refresh():
+    token = _extract_bearer_token()
+    if not token:
+        return _error("Missing or invalid authentication token.", 401)
+
+    try:
+        payload = jwt_tokens.decode_access_token_for_refresh(token)
+    except TokenRevokedError:
+        return _error("Session expired.", 401)
+    except TokenError:
+        return _error("Missing or invalid authentication token.", 401)
+
+    sub = payload.get("sub")
+    email = payload.get("email")
+    old_jti = payload.get("jti")
+    old_exp = payload.get("exp")
+    if not sub or not email:
+        return _error("Missing or invalid authentication token.", 401)
+
+    try:
+        user_id = uuid.UUID(str(sub))
+    except ValueError:
+        return _error("Missing or invalid authentication token.", 401)
+
+    user = User.query.get(user_id)
+    if not user or user.email != email:
+        return _error("Missing or invalid authentication token.", 401)
+
+    if old_jti and old_exp:
+        expires_at = datetime.fromtimestamp(old_exp, tz=timezone.utc)
+        try:
+            jwt_tokens.revoke_token(old_jti, expires_at)
+        except Exception:
+            db.session.rollback()
+            return _error("Internal server error.", 500)
+
+    token, expires_in = jwt_tokens.create_access_token(user.id, user.email)
+
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Token refreshed.",
                 "token": token,
                 "expires_in": expires_in,
             }

@@ -49,6 +49,31 @@ def decode_access_token(token: str) -> dict:
     except InvalidTokenError as exc:
         raise TokenError("Invalid or expired token.") from exc
 
+    return _validate_token_payload(payload)
+
+
+def decode_access_token_for_refresh(token: str) -> dict:
+    try:
+        payload = jwt.decode(
+            token,
+            Config.JWT_SECRET_KEY,
+            algorithms=[Config.JWT_ALGORITHM],
+            options={"verify_exp": False},
+        )
+    except InvalidTokenError as exc:
+        raise TokenError("Invalid or expired token.") from exc
+
+    exp = payload.get("exp")
+    if exp:
+        exp_dt = datetime.fromtimestamp(exp, tz=timezone.utc)
+        grace = timedelta(seconds=Config.JWT_REFRESH_GRACE_SECONDS)
+        if datetime.now(timezone.utc) > exp_dt + grace:
+            raise TokenError("Session expired.")
+
+    return _validate_token_payload(payload)
+
+
+def _validate_token_payload(payload: dict) -> dict:
     jti = payload.get("jti")
     if jti and RevokedToken.query.get(jti):
         raise TokenRevokedError("Token has been revoked.")

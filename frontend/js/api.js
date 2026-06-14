@@ -8,6 +8,24 @@ const GATEWAY_URL = window.location.hostname === "localhost" || window.location.
 
 const TOKEN_KEY = "phishguard_token";
 const EMAIL_KEY = "phishguard_email";
+const EXPIRES_AT_KEY = "phishguard_expires_at";
+
+const REFRESH_MARGIN_MS = 5 * 60 * 1000;
+const KEEP_ALIVE_INTERVAL_MS = 60 * 1000;
+
+let refreshPromise = null;
+let keepAliveTimer = null;
+
+function parseTokenExpiryMs(token) {
+  try {
+    const payload = JSON.parse(
+      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+    );
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
 
 const Session = {
   getToken() {
@@ -16,21 +34,91 @@ const Session = {
   getEmail() {
     return localStorage.getItem(EMAIL_KEY);
   },
-  set(token, email) {
+  getExpiresAt() {
+    const stored = localStorage.getItem(EXPIRES_AT_KEY);
+    if (stored) {
+      const value = Number(stored);
+      if (!Number.isNaN(value)) return value;
+    }
+    const token = this.getToken();
+    return token ? parseTokenExpiryMs(token) : null;
+  },
+  set(token, email, expiresIn) {
     localStorage.setItem(TOKEN_KEY, token);
     if (email) localStorage.setItem(EMAIL_KEY, email);
+    const expiresAt = expiresIn
+      ? Date.now() + expiresIn * 1000
+      : parseTokenExpiryMs(token);
+    if (expiresAt) {
+      localStorage.setItem(EXPIRES_AT_KEY, String(expiresAt));
+    }
   },
   clear() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(EMAIL_KEY);
+    localStorage.removeItem(EXPIRES_AT_KEY);
+    this.stopKeepAlive();
   },
   isAuthenticated() {
     return !!this.getToken();
   },
+  needsRefresh() {
+    const expiresAt = this.getExpiresAt();
+    if (!expiresAt) return false;
+    return expiresAt - Date.now() < REFRESH_MARGIN_MS;
+  },
+  async tryRefresh() {
+    if (!this.isAuthenticated()) return false;
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = (async () => {
+      try {
+        const result = await apiRequest("/api/auth/refresh", {
+          method: "POST",
+          auth: true,
+          skipSessionRetry: true,
+        });
+        this.set(result.token, this.getEmail(), result.expires_in);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+
+    return refreshPromise;
+  },
+  async tryRefreshIfNeeded() {
+    if (!this.isAuthenticated() || !this.needsRefresh()) return false;
+    return this.tryRefresh();
+  },
+  startKeepAlive() {
+    if (keepAliveTimer) return;
+
+    keepAliveTimer = setInterval(() => {
+      this.tryRefreshIfNeeded();
+    }, KEEP_ALIVE_INTERVAL_MS);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        this.tryRefreshIfNeeded();
+      }
+    });
+
+    this.tryRefreshIfNeeded();
+  },
+  stopKeepAlive() {
+    if (!keepAliveTimer) return;
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = null;
+  },
   requireAuth() {
     if (!this.isAuthenticated()) {
       window.location.href = "index.html";
+      return;
     }
+    this.startKeepAlive();
   },
   redirectIfAuthenticated() {
     if (this.isAuthenticated()) {
@@ -55,8 +143,17 @@ class ApiError extends Error {
  * @param {object} [options.body]
  * @param {boolean} [options.auth] - includes the Authorization header
  * @param {boolean} [options.raw] - returns the Response instead of JSON (e.g. CSV)
+ * @param {boolean} [options.skipSessionRetry] - do not attempt token refresh on 401
+ * @param {boolean} [options._isRetry] - internal flag to avoid infinite retry loops
  */
-async function apiRequest(path, { method = "GET", body, auth = false, raw = false } = {}) {
+async function apiRequest(path, {
+  method = "GET",
+  body,
+  auth = false,
+  raw = false,
+  skipSessionRetry = false,
+  _isRetry = false,
+} = {}) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) {
@@ -77,6 +174,23 @@ async function apiRequest(path, { method = "GET", body, auth = false, raw = fals
       0,
       null
     );
+  }
+
+  if (response.status === 401 && auth && !skipSessionRetry && !_isRetry) {
+    const refreshed = await Session.tryRefresh();
+    if (refreshed) {
+      return apiRequest(path, {
+        method,
+        body,
+        auth,
+        raw,
+        skipSessionRetry,
+        _isRetry: true,
+      });
+    }
+    Session.clear();
+    window.location.href = "index.html?expired=1";
+    throw new ApiError("Session expired.", 401, null);
   }
 
   if (response.status === 401 && auth) {
@@ -120,6 +234,9 @@ const Api = {
       method: "POST",
       body: { email, password },
     });
+  },
+  refresh() {
+    return apiRequest("/api/auth/refresh", { method: "POST", auth: true, skipSessionRetry: true });
   },
   logout() {
     return apiRequest("/api/auth/logout", { method: "POST", auth: true });
