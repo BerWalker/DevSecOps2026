@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start stack and wait for readiness
+        run: docker compose up -d --wait --build
+
+      - name: Run integration tests
+        run: python -m pytest tests/ -v
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v --remove-orphans
