@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visão geral — PhishGuard Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    Session.requireAuth();
+    const content = renderShell("dashboard.html", "Visão geral");
+
+    async function load() {
+      content.innerHTML = `<div class="loading">A carregar dados...</div>`;
+
+      try {
+        const result = await Api.getDashboard();
+        const data = result.data;
+        setTopbarMeta(`${data.total_campaigns} campanha(s)`);
+        render(data);
+      } catch (err) {
+        content.innerHTML = `<div class="alert alert--error">${escapeHtml(err.message || "Não foi possível carregar a visão geral.")}</div>`;
+      }
+    }
+
+    function render(data) {
+      const rows = (data.campaigns || [])
+        .map((c) => `
+          <tr>
+            <td><a class="table-link" href="campaign-detail.html?id=${encodeURIComponent(c.campaign_id)}">${escapeHtml(c.name)}</a></td>
+            <td class="is-num">${c.target_count}</td>
+            <td class="is-num">${c.click_count}</td>
+            <td class="is-num">${c.clicked_target_count}</td>
+            <td>
+              <div class="signal">
+                <span class="signal__track"><span class="signal__fill" style="width:${Math.min(100, Math.round(c.click_rate * 100))}%"></span></span>
+                ${formatPercent(c.click_rate)}
+              </div>
+            </td>
+          </tr>
+        `)
+        .join("");
+
+      const tableOrEmpty = (data.campaigns || []).length
+        ? `<table>
+            <thead>
+              <tr>
+                <th>Campanha</th>
+                <th class="is-num">Alvos</th>
+                <th class="is-num">Cliques</th>
+                <th class="is-num">Alvos com clique</th>
+                <th>Taxa de clique</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        : `<div class="empty">
+            <div class="empty__title">Ainda não há campanhas</div>
+            <div class="empty__sub">Crie a primeira campanha para começar a recolher métricas.</div>
+          </div>`;
+
+      content.innerHTML = `
+        <div class="stat-row">
+          <div class="stat">
+            <div class="stat__label">Campanhas</div>
+            <div class="stat__value">${data.total_campaigns}</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">Alvos totais</div>
+            <div class="stat__value">${data.total_targets}</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">Cliques registados</div>
+            <div class="stat__value">${data.total_clicks}</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">Taxa de clique geral</div>
+            <div class="stat__value">${formatPercent(data.click_rate)} <small>/ ${data.clicked_target_count} alvos</small></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__header">
+            <h2>Campanhas por desempenho</h2>
+            <a class="btn btn--sm" href="campaigns.html">Ver todas</a>
+          </div>
+          <div class="panel__body--flush">
+            ${tableOrEmpty}
+          </div>
+        </div>
+      `;
+    }
+
+    load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campanha — PhishGuard Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    Session.requireAuth();
+
+    const params = new URLSearchParams(window.location.search);
+    const campaignId = params.get("id");
+
+    const content = renderShell("campaigns.html", "Campanha");
+
+    if (!campaignId) {
+      content.innerHTML = `<div class="alert alert--error">ID de campanha não indicado.</div>`;
+    } else {
+      load();
+    }
+
+    async function load() {
+      content.innerHTML = `<div class="loading">A carregar campanha...</div>`;
+
+      let campaign;
+      try {
+        const result = await Api.getCampaign(campaignId);
+        campaign = result.data;
+      } catch (err) {
+        content.innerHTML = `<div class="alert alert--error">${escapeHtml(err.message || "Não foi possível carregar a campanha.")}</div>`;
+        return;
+      }
+
+      let analytics = null;
+      try {
+        const result = await Api.getCampaignAnalytics(campaignId);
+        analytics = result.data;
+      } catch {
+        /* analytics indisponível — segue sem métricas detalhadas */
+      }
+
+      render(campaign, analytics);
+    }
+
+    function render(campaign, analytics) {
+      setTopbarMeta(`Atualizada em ${formatDateTime(campaign.updated_at)}`);
+
+      const targets = analytics ? analytics.targets : null;
+
+      const statsHtml = analytics
+        ? `
+          <div class="stat-row">
+            <div class="stat">
+              <div class="stat__label">Alvos</div>
+              <div class="stat__value">${analytics.target_count}</div>
+            </div>
+            <div class="stat">
+              <div class="stat__label">Cliques</div>
+              <div class="stat__value">${analytics.click_count}</div>
+            </div>
+            <div class="stat">
+              <div class="stat__label">Alvos com clique</div>
+              <div class="stat__value">${analytics.clicked_target_count}</div>
+            </div>
+            <div class="stat">
+              <div class="stat__label">Taxa de clique</div>
+              <div class="stat__value">${formatPercent(analytics.click_rate)}</div>
+            </div>
+          </div>`
+        : `<div class="alert alert--info">Métricas indisponíveis no momento.</div>`;
+
+      const targetRows = (targets || [])
+        .map((t) => {
+          const geo = t.geolocation;
+          const location = geo && (geo.city || geo.country)
+            ? [geo.city, geo.country].filter(Boolean).join(", ")
+            : "—";
+          const statusBadge = t.clicked
+            ? `<span class="badge badge--dot badge--warn">Clicou</span>`
+            : `<span class="badge badge--dot badge--off">Sem interação</span>`;
+          return `
+            <tr>
+              <td>${escapeHtml(t.email)}</td>
+              <td class="is-muted">${escapeHtml(t.name || "—")}</td>
+              <td class="is-muted">${escapeHtml(t.group_name || "—")}</td>
+              <td>${statusBadge}</td>
+              <td class="is-num">${t.click_count}</td>
+              <td class="is-muted">${escapeHtml(location)}</td>
+              <td class="is-muted">${formatDateTime(t.last_click_at)}</td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      const targetsTableOrEmpty = targets && targets.length
+        ? `<table>
+            <thead>
+              <tr>
+                <th>E-mail</th>
+                <th>Nome</th>
+                <th>Grupo</th>
+                <th>Estado</th>
+                <th class="is-num">Cliques</th>
+                <th>Localização</th>
+                <th>Último clique</th>
+              </tr>
+            </thead>
+            <tbody>${targetRows}</tbody>
+          </table>`
+        : `<div class="empty">
+            <div class="empty__title">Sem dados de alvos</div>
+            <div class="empty__sub">Adicione grupos de alvos a esta campanha para acompanhar interações.</div>
+          </div>`;
+
+      const groupsHtml = (campaign.target_groups || [])
+        .map((group) => `
+          <div class="section-title">${escapeHtml(group.name)} · ${group.targets.length} alvo(s)</div>
+          <table>
+            <thead>
+              <tr>
+                <th>E-mail</th>
+                <th>Nome</th>
+                <th>Link de rastreamento</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${group.targets.map((t) => `
+                <tr>
+                  <td>${escapeHtml(t.email)}</td>
+                  <td class="is-muted">${escapeHtml(t.name || "—")}</td>
+                  <td>
+                    ${t.tracking
+                      ? `<div class="copy-field">
+                          <input type="text" class="is-mono" readonly value="${escapeHtml(t.tracking.url)}" onclick="this.select()" />
+                          <button type="button" class="btn btn--sm" data-copy="${escapeHtml(t.tracking.url)}">Copiar</button>
+                        </div>`
+                      : `<span class="is-muted">—</span>`}
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `)
+        .join("");
+
+      content.innerHTML = `
+        <div id="action-alert"></div>
+
+        ${statsHtml}
+
+        <div class="detail-grid">
+          <div class="panel">
+            <div class="panel__header">
+              <h2>Resumo</h2>
+              <a class="btn btn--sm" href="campaign-form.html?id=${encodeURIComponent(campaign.id)}">Editar</a>
+            </div>
+            <div class="panel__body">
+              <dl class="kv">
+                <dt>Nome</dt>
+                <dd>${escapeHtml(campaign.name)}</dd>
+                <dt>ID</dt>
+                <dd>${escapeHtml(campaign.id)}</dd>
+                <dt>Grupos</dt>
+                <dd>${(campaign.target_groups || []).length}</dd>
+                <dt>Alvos</dt>
+                <dd>${(campaign.target_groups || []).reduce((sum, g) => sum + g.targets.length, 0)}</dd>
+                <dt>Criada em</dt>
+                <dd>${formatDateTime(campaign.created_at)}</dd>
+                <dt>Atualizada em</dt>
+                <dd>${formatDateTime(campaign.updated_at)}</dd>
+              </dl>
+              <div class="btn-row">
+                <button type="button" class="btn btn--primary" id="send-btn">Enviar campanha</button>
+                <a class="btn" id="export-btn" href="#">Exportar CSV</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2>Conteúdo do e-mail</h2>
+            </div>
+            <div class="panel__body">
+              <pre class="is-mono" style="white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--text-muted);">${escapeHtml(campaign.email_content)}</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__header">
+            <h2>Alvos e interações</h2>
+          </div>
+          <div class="panel__body--flush">
+            ${targetsTableOrEmpty}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__header">
+            <h2>Links de rastreamento por grupo</h2>
+          </div>
+          <div class="panel__body">
+            ${groupsHtml || `<div class="empty"><div class="empty__title">Sem grupos de alvos</div></div>`}
+          </div>
+        </div>
+      `;
+
+      bindActions(campaign);
+    }
+
+    function bindActions(campaign) {
+      const actionAlert = document.getElementById("action-alert");
+
+      document.getElementById("send-btn").addEventListener("click", async (event) => {
+        const btn = event.currentTarget;
+        if (!confirm(`Enviar e-mails de simulação para todos os alvos de "${campaign.name}"?`)) return;
+
+        btn.disabled = true;
+        btn.textContent = "A enviar...";
+        clearAlert(actionAlert);
+
+        try {
+          const result = await Api.sendCampaign(campaign.id);
+          const data = result.data || {};
+          if (result.status === "success") {
+            showAlert(actionAlert, `Campanha enviada com sucesso para ${data.sent_count} alvo(s).`, "ok");
+          } else {
+            showAlert(actionAlert, `Enviado para ${data.sent_count} alvo(s), com ${data.failed_count} falha(s).`, "info");
+          }
+        } catch (err) {
+          showAlert(actionAlert, err.message || "Não foi possível enviar a campanha.", "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Enviar campanha";
+        }
+      });
+
+      document.getElementById("export-btn").addEventListener("click", async (event) => {
+        event.preventDefault();
+        const btn = event.currentTarget;
+        const original = btn.textContent;
+        btn.textContent = "A preparar...";
+
+        try {
+          const response = await Api.exportCampaignCsv(campaign.id);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `campanha_${campaign.id}_relatorio.csv`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          showAlert(actionAlert, err.message || "Não foi possível exportar o relatório.", "error");
+        } finally {
+          btn.textContent = original;
+        }
+      });
+
+      content.querySelectorAll("[data-copy]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const value = btn.dataset.copy;
+          try {
+            await navigator.clipboard.writeText(value);
+            const original = btn.textContent;
+            btn.textContent = "Copiado";
+            setTimeout(() => (btn.textContent = original), 1200);
+          } catch {
+            /* clipboard indisponível — utilizador pode selecionar manualmente */
+          }
+        });
+      });
+    }
+  </script>
+</body>
+</html>

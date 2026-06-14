@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campanha — PhishGuard Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    Session.requireAuth();
+
+    const params = new URLSearchParams(window.location.search);
+    const campaignId = params.get("id");
+    const isEdit = !!campaignId;
+
+    const content = renderShell("campaigns.html", isEdit ? "Editar campanha" : "Nova campanha");
+
+    let groupCounter = 0;
+    let targetCounter = 0;
+
+    function emptyTarget() {
+      targetCounter += 1;
+      return { uid: `t${targetCounter}`, email: "", name: "" };
+    }
+
+    function emptyGroup() {
+      groupCounter += 1;
+      return { uid: `g${groupCounter}`, name: "", targets: [emptyTarget()] };
+    }
+
+    // Estado local dos grupos de alvos
+    let groups = [emptyGroup()];
+
+    content.innerHTML = `
+      <div id="form-alert"></div>
+
+      <form id="campaign-form" novalidate>
+        <div class="panel">
+          <div class="panel__header">
+            <h2>Detalhes</h2>
+          </div>
+          <div class="panel__body">
+            <div class="field">
+              <label for="name">Nome da campanha</label>
+              <input type="text" id="name" name="name" required maxlength="255" />
+            </div>
+            <div class="field">
+              <label for="email_content">Conteúdo do e-mail (HTML)</label>
+              <textarea id="email_content" name="email_content" required></textarea>
+              <p class="field__hint">
+                Use <code>{{tracking_url}}</code>, <code>{{target_name}}</code> e <code>{{target_email}}</code>
+                — são substituídos por alvo antes do envio.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__header">
+            <h2>Grupos de alvos</h2>
+            <button type="button" class="btn btn--sm" id="add-group-btn">Adicionar grupo</button>
+          </div>
+          <div class="panel__body" id="groups-container"></div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn btn--primary" id="submit-btn">${isEdit ? "Guardar alterações" : "Criar campanha"}</button>
+          <a class="btn btn--ghost" href="campaigns.html">Cancelar</a>
+          ${isEdit ? `<button type="button" class="btn btn--danger" id="delete-btn" style="margin-left:auto">Eliminar campanha</button>` : ""}
+        </div>
+      </form>
+    `;
+
+    const alertBox = document.getElementById("form-alert");
+    const groupsContainer = document.getElementById("groups-container");
+
+    function renderGroups() {
+      groupsContainer.innerHTML = groups
+        .map((group, gi) => `
+          <div class="group" data-group="${group.uid}">
+            <div class="group__header">
+              <input type="text" placeholder="Nome do grupo (ex.: Financeiro)" maxlength="255"
+                     value="${escapeHtml(group.name)}" data-role="group-name" data-group="${group.uid}" />
+              ${groups.length > 1 ? `<button type="button" class="icon-btn" data-action="remove-group" data-group="${group.uid}" title="Remover grupo">×</button>` : ""}
+            </div>
+            <div class="group__body">
+              ${group.targets.map((target) => `
+                <div class="target-row" data-target="${target.uid}">
+                  <input type="email" placeholder="email@empresa.com" required
+                         value="${escapeHtml(target.email)}" data-role="target-email" data-group="${group.uid}" data-target="${target.uid}" />
+                  <input type="text" placeholder="Nome (opcional)" maxlength="255"
+                         value="${escapeHtml(target.name)}" data-role="target-name" data-group="${group.uid}" data-target="${target.uid}" />
+                  ${group.targets.length > 1 ? `<button type="button" class="icon-btn" data-action="remove-target" data-group="${group.uid}" data-target="${target.uid}" title="Remover alvo">×</button>` : `<span></span>`}
+                </div>
+              `).join("")}
+              <div class="group__actions">
+                <button type="button" class="btn btn--sm" data-action="add-target" data-group="${group.uid}">Adicionar alvo</button>
+              </div>
+            </div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function syncStateFromInputs() {
+      groupsContainer.querySelectorAll("[data-role='group-name']").forEach((input) => {
+        const group = groups.find((g) => g.uid === input.dataset.group);
+        if (group) group.name = input.value;
+      });
+      groupsContainer.querySelectorAll("[data-role='target-email']").forEach((input) => {
+        const group = groups.find((g) => g.uid === input.dataset.group);
+        const target = group && group.targets.find((t) => t.uid === input.dataset.target);
+        if (target) target.email = input.value;
+      });
+      groupsContainer.querySelectorAll("[data-role='target-name']").forEach((input) => {
+        const group = groups.find((g) => g.uid === input.dataset.group);
+        const target = group && group.targets.find((t) => t.uid === input.dataset.target);
+        if (target) target.name = input.value;
+      });
+    }
+
+    groupsContainer.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-action]");
+      if (!btn) return;
+      syncStateFromInputs();
+
+      const action = btn.dataset.action;
+      const groupUid = btn.dataset.group;
+      const group = groups.find((g) => g.uid === groupUid);
+
+      if (action === "add-target" && group) {
+        group.targets.push(emptyTarget());
+      } else if (action === "remove-target" && group) {
+        group.targets = group.targets.filter((t) => t.uid !== btn.dataset.target);
+      } else if (action === "remove-group") {
+        groups = groups.filter((g) => g.uid !== groupUid);
+      }
+      renderGroups();
+    });
+
+    document.getElementById("add-group-btn").addEventListener("click", () => {
+      syncStateFromInputs();
+      groups.push(emptyGroup());
+      renderGroups();
+    });
+
+    renderGroups();
+
+    // --- carregar dados existentes em modo edição ---
+    async function loadExisting() {
+      content.querySelectorAll("input, textarea, button").forEach((el) => (el.disabled = true));
+      try {
+        const result = await Api.getCampaign(campaignId);
+        const campaign = result.data;
+        document.getElementById("name").value = campaign.name;
+        document.getElementById("email_content").value = campaign.email_content;
+
+        if (campaign.target_groups && campaign.target_groups.length) {
+          groups = campaign.target_groups.map((g) => {
+            groupCounter += 1;
+            return {
+              uid: `g${groupCounter}`,
+              name: g.name,
+              targets: g.targets.length
+                ? g.targets.map((t) => {
+                    targetCounter += 1;
+                    return { uid: `t${targetCounter}`, email: t.email, name: t.name || "" };
+                  })
+                : [emptyTarget()],
+            };
+          });
+        }
+        renderGroups();
+      } catch (err) {
+        showAlert(alertBox, err.message || "Não foi possível carregar a campanha.", "error");
+      } finally {
+        content.querySelectorAll("input, textarea, button").forEach((el) => (el.disabled = false));
+      }
+    }
+
+    if (isEdit) loadExisting();
+
+    // --- submissão ---
+    function buildPayload() {
+      syncStateFromInputs();
+
+      const name = document.getElementById("name").value.trim();
+      const email_content = document.getElementById("email_content").value;
+
+      const target_groups = groups
+        .map((g) => ({
+          name: g.name.trim(),
+          targets: g.targets
+            .map((t) => ({ email: t.email.trim(), name: t.name.trim() || null }))
+            .filter((t) => t.email),
+        }))
+        .filter((g) => g.name && g.targets.length);
+
+      return { name, email_content, target_groups };
+    }
+
+    const form = document.getElementById("campaign-form");
+    const submitBtn = document.getElementById("submit-btn");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearAlert(alertBox);
+
+      const payload = buildPayload();
+      if (!payload.name) {
+        showAlert(alertBox, "Indique um nome para a campanha.", "error");
+        return;
+      }
+      if (!payload.email_content.trim()) {
+        showAlert(alertBox, "Indique o conteúdo do e-mail.", "error");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "A guardar...";
+
+      try {
+        if (isEdit) {
+          await Api.updateCampaign(campaignId, payload);
+          window.location.href = `campaign-detail.html?id=${encodeURIComponent(campaignId)}`;
+        } else {
+          const result = await Api.createCampaign(payload);
+          window.location.href = `campaign-detail.html?id=${encodeURIComponent(result.data.id)}`;
+        }
+      } catch (err) {
+        showAlert(alertBox, err.message || "Não foi possível guardar a campanha.", "error");
+        submitBtn.disabled = false;
+        submitBtn.textContent = isEdit ? "Guardar alterações" : "Criar campanha";
+      }
+    });
+
+    const deleteBtn = document.getElementById("delete-btn");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", async () => {
+        if (!confirm("Eliminar esta campanha? Esta ação não pode ser desfeita.")) return;
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "A eliminar...";
+        try {
+          await Api.deleteCampaign(campaignId);
+          window.location.href = "campaigns.html";
+        } catch (err) {
+          showAlert(alertBox, err.message || "Não foi possível eliminar a campanha.", "error");
+          deleteBtn.disabled = false;
+          deleteBtn.textContent = "Eliminar campanha";
+        }
+      });
+    }
+  </script>
+</body>
+</html>

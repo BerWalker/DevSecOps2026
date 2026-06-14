@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criar conta — PhishGuard Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-box">
+      <div class="auth-box__brand">
+        <span class="auth-box__brand-mark"></span>
+        <span class="auth-box__brand-text">phishguard<span>/console</span></span>
+      </div>
+
+      <h2>Criar conta</h2>
+      <p class="auth-box__sub">Registe-se para gerir campanhas de simulação.</p>
+
+      <div id="form-alert"></div>
+
+      <form id="register-form" novalidate>
+        <div class="field">
+          <label for="name">Nome</label>
+          <input type="text" id="name" name="name" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Senha</label>
+          <input type="password" id="password" name="password" autocomplete="new-password" required />
+          <p class="field__hint">Mínimo 8 caracteres, com 1 maiúscula, 1 número e 1 símbolo.</p>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn btn--primary btn--full" id="submit-btn">Criar conta</button>
+        </div>
+      </form>
+
+      <p class="auth-box__switch">
+        Já tem conta? <a href="index.html">Entrar</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    Session.redirectIfAuthenticated();
+
+    const alertBox = document.getElementById("form-alert");
+    const form = document.getElementById("register-form");
+    const submitBtn = document.getElementById("submit-btn");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearAlert(alertBox);
+
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "A criar...";
+
+      try {
+        await Api.register(email, password, name);
+        window.location.href = "index.html?registered=1";
+      } catch (err) {
+        showAlert(alertBox, err.message || "Não foi possível criar a conta.", "error");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Criar conta";
+      }
+    });
+  </script>
+</body>
+</html>
