@@ -15,6 +15,14 @@ services:
         condition: service_started
       email:
         condition: service_started
+      frontend:
+        condition: service_started
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: frontend_service
 
   auth:
     build:

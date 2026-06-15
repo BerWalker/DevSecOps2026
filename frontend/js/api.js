@@ -2,9 +2,7 @@
    api.js — HTTP client for the API Gateway
    ========================================================================== */
 
-const GATEWAY_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? "http://localhost:5000"
-  : window.location.origin;
+const GATEWAY_URL = window.location.origin;
 
 const TOKEN_KEY = "phishguard_token";
 const EMAIL_KEY = "phishguard_email";
