@@ -37,32 +37,34 @@ jobs:
         run: docker compose down -v --remove-orphans
 
   k8s-integration-tests:
-    name: K8s integration tests
-    runs-on: self-hosted
-    defaults:
-      run:
-        shell: bash
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Prepare environment
         run: cp .env.example .env
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Build images
+      - name: Start minikube
+        uses: medyagh/setup-minikube@latest
+
+      - name: Build images inside minikube
         run: |
-          docker build -f frontend/Dockerfile -t frontend:latest .
-          docker build -f services/auth/Dockerfile -t auth:latest .
+          eval $(minikube docker-env)
+          docker build -f frontend/Dockerfile          -t frontend:latest .
+          docker build -f services/auth/Dockerfile     -t auth:latest .
           docker build -f services/campaign/Dockerfile -t campaign:latest .
           docker build -f services/analytics/Dockerfile -t analytics:latest .
-          docker build -f services/email/Dockerfile -t email:latest .
+          docker build -f services/email/Dockerfile    -t email:latest .
 
-      - name: Deploy to Kubernetes
+      - name: Deploy
         run: kubectl apply -k kubernetes/
 
       - name: Wait for pods
@@ -74,20 +76,14 @@ jobs:
       - name: Wait for gateway
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:5000/ && exit 0
-            sleep 2
+            curl -sf http://localhost:5000/ && break || sleep 5
           done
-          exit 1
 
       - name: Run integration tests
         env:
           INTEGRATION_BASE_URL: http://localhost:5000
           INTERNAL_API_KEY: change-me-internal-key
         run: python -m pytest tests/ -v
-
-      - name: Tear down
-        if: always()
-        run: kubectl delete -k kubernetes/ --ignore-not-found
 
   semgrep:
     name: Semgrep
