@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: postgres:16
+          command: ['sh', '-c', 'until pg_isready -h postgres-auth -p 5432; do echo waiting for database; sleep 2; done;']
+      containers:
+        - name: auth-service
+          image: auth:latest
+          imagePullPolicy: Never
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AUTH_DATABASE_URL
+            - name: AUTH_SERVICE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AUTH_SERVICE_PORT
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: INTERNAL_API_KEY
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET_KEY
+          ports:
+            - containerPort: 5001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+spec:
+  ports:
+    - port: 5001
+      targetPort: 5001
+  selector:
+    app: auth
