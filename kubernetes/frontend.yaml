@@ -13,19 +13,19 @@ spec:
         app: frontend
     spec:
       containers:
-        - name: frontend-service
+        - name: frontend
           image: frontend:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 80 # Assumed port based on common setups
+            - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
 spec:
+  selector:
+    app: frontend
   ports:
     - port: 80
       targetPort: 80
-  selector:
-    app: frontend

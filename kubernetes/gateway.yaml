@@ -13,17 +13,17 @@ spec:
         app: gateway
     spec:
       containers:
-        - name: api-gateway
+        - name: gateway
           image: nginx:alpine
           ports:
             - containerPort: 80
           volumeMounts:
-            - name: config-volume
+            - name: nginx-config
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
               readOnly: true
       volumes:
-        - name: config-volume
+        - name: nginx-config
           configMap:
             name: nginx-config
 ---
@@ -32,10 +32,10 @@ kind: Service
 metadata:
   name: gateway
 spec:
-  type: NodePort # Use LoadBalancer if deployed on AWS/GCP/Azure
-  ports:
-    - port: 5000
-      targetPort: 80
-      nodePort: 30500 # Explicitly targets a port outside the cluster (range 30000-32767)
+  type: NodePort
   selector:
     app: gateway
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30500
