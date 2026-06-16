@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: email
+  template:
+    metadata:
+      labels:
+        app: email
+    spec:
+      containers:
+        - name: email
+          image: email:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5010
+          env:
+            - name: EMAIL_SERVICE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: EMAIL_SERVICE_PORT
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: INTERNAL_API_KEY
+            - name: GMAIL_FROM
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GMAIL_FROM
+            - name: GMAIL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GMAIL_USER
+            - name: GMAIL_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: GMAIL_APP_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: email
+spec:
+  selector:
+    app: email
+  ports:
+    - port: 5010
+      targetPort: 5010
