@@ -39,13 +39,12 @@ jobs:
   k8s-integration-tests:
     name: K8s integration tests
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Prepare environment
         run: cp .env.example .env
