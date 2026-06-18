@@ -54,14 +54,17 @@ jobs:
       - name: Start minikube
         uses: medyagh/setup-minikube@latest
 
-      - name: Build images inside minikube
+      - name: Build and load images
         run: |
-          eval $(minikube docker-env)
           docker build -f frontend/Dockerfile          -t frontend:latest .
           docker build -f services/auth/Dockerfile     -t auth:latest .
           docker build -f services/campaign/Dockerfile -t campaign:latest .
           docker build -f services/analytics/Dockerfile -t analytics:latest .
           docker build -f services/email/Dockerfile    -t email:latest .
+          minikube image load frontend:latest auth:latest campaign:latest analytics:latest email:latest
+
+      - name: Deploy Vault
+        run: ./vault/deploy-vault.sh
 
       - name: Deploy
         run: kubectl apply -k kubernetes/

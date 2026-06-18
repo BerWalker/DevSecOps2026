@@ -155,4 +155,4 @@ kubectl rollout restart deployment/postgres-auth deployment/postgres-campaign de
 kubectl rollout status deployment/email --timeout=120s 2>/dev/null || true
 
 echo "14. Setup complete. Starting port-forwarding (Press Ctrl+C to stop)..."
-kubectl port-forward svc/vault-ui 8200:8200 -n vault
+kubectl port-forward svc/vault-ui 8200:8200 -n vault &
