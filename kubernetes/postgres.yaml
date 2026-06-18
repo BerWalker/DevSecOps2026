@@ -25,6 +25,10 @@ spec:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "my-app-role"
         vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        vault.hashicorp.com/agent-init-cpu-request: "0"
+        vault.hashicorp.com/agent-init-mem-request: "0"
+        vault.hashicorp.com/agent-cpu-request: "0"
+        vault.hashicorp.com/agent-mem-request: "0"
         # Map the specific Auth DB keys to standard Postgres environment variables
         vault.hashicorp.com/agent-inject-template-env-vars: |
           {{- with secret "secret/data/my-app/env" -}}
@@ -97,6 +101,10 @@ spec:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "my-app-role"
         vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        vault.hashicorp.com/agent-init-cpu-request: "0"
+        vault.hashicorp.com/agent-init-mem-request: "0"
+        vault.hashicorp.com/agent-cpu-request: "0"
+        vault.hashicorp.com/agent-mem-request: "0"
         # Map the specific Campaign DB keys to standard Postgres environment variables
         vault.hashicorp.com/agent-inject-template-env-vars: |
           {{- with secret "secret/data/my-app/env" -}}
@@ -167,6 +175,10 @@ spec:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "my-app-role"
         vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        vault.hashicorp.com/agent-init-cpu-request: "0"
+        vault.hashicorp.com/agent-init-mem-request: "0"
+        vault.hashicorp.com/agent-cpu-request: "0"
+        vault.hashicorp.com/agent-mem-request: "0"
         # Map the specific Analytics DB keys to standard Postgres environment variables
         vault.hashicorp.com/agent-inject-template-env-vars: |
           {{- with secret "secret/data/my-app/env" -}}
