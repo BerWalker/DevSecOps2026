@@ -11,39 +11,41 @@ spec:
     metadata:
       labels:
         app: email
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "my-app-role"
+        vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        # The dynamic loop: reads all keys in Vault and exports them automatically
+        vault.hashicorp.com/agent-inject-template-env-vars: |
+          {{- with secret "secret/data/my-app/env" -}}
+          {{- range $k, $v := .Data.data }}
+          export {{ $k }}="{{ $v }}"
+          {{- end }}
+          {{- end -}}
     spec:
+      serviceAccountName: my-app-sa
       containers:
         - name: email
           image: email:latest
           imagePullPolicy: Never
           ports:
             - containerPort: 5010
+          
+          # Load the non-sensitive configuration directly from the cleaned ConfigMap
           env:
             - name: EMAIL_SERVICE_PORT
               valueFrom:
                 configMapKeyRef:
                   name: app-config
                   key: EMAIL_SERVICE_PORT
-            - name: INTERNAL_API_KEY
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: INTERNAL_API_KEY
-            - name: GMAIL_FROM
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: GMAIL_FROM
-            - name: GMAIL_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: GMAIL_USER
-            - name: GMAIL_APP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: GMAIL_APP_PASSWORD
+                  
+          # Override the startup command to load Vault secrets into the environment
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              . /vault/secrets/env-vars
+              
+              exec /docker-entrypoint.sh
 ---
 apiVersion: v1
 kind: Service

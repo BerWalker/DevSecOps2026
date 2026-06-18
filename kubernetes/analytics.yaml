@@ -11,7 +11,18 @@ spec:
     metadata:
       labels:
         app: analytics
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "my-app-role"
+        vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        vault.hashicorp.com/agent-inject-template-env-vars: |
+          {{- with secret "secret/data/my-app/env" -}}
+          {{- range $k, $v := .Data.data }}
+          export {{ $k }}="{{ $v }}"
+          {{- end }}
+          {{- end -}}
     spec:
+      serviceAccountName: my-app-sa
       initContainers:
         - name: wait-for-postgres
           image: postgres:16
@@ -22,37 +33,18 @@ spec:
           imagePullPolicy: Never
           ports:
             - containerPort: 5003
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: ANALYTICS_DATABASE_URL
-            - name: ANALYTICS_SERVICE_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: ANALYTICS_SERVICE_PORT
-            - name: CAMPAIGN_SERVICE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: CAMPAIGN_SERVICE_URL
-            - name: GATEWAY_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: GATEWAY_URL
-            - name: INTERNAL_API_KEY
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: INTERNAL_API_KEY
-            - name: JWT_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: JWT_SECRET_KEY
+          
+          # Injects non-sensitive configs from ConfigMap automatically
+          envFrom:
+            - configMapRef:
+                name: app-config
+          
+          # Load secrets and start the application
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              . /vault/secrets/env-vars
+              exec /docker-entrypoint.sh
 ---
 apiVersion: v1
 kind: Service

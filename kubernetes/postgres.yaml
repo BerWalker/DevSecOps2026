@@ -1,5 +1,3 @@
-# postgres-auth, postgres-campaign, postgres-analytics (compose.yaml)
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -23,34 +21,37 @@ spec:
     metadata:
       labels:
         app: postgres-auth
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "my-app-role"
+        vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        # Map the specific Auth DB keys to standard Postgres environment variables
+        vault.hashicorp.com/agent-inject-template-env-vars: |
+          {{- with secret "secret/data/my-app/env" -}}
+          export POSTGRES_USER="{{ .Data.data.AUTH_POSTGRES_USER }}"
+          export POSTGRES_DB="{{ .Data.data.AUTH_POSTGRES_DB }}"
+          export POSTGRES_PASSWORD="{{ .Data.data.AUTH_POSTGRES_PASSWORD }}"
+          {{- end -}}
     spec:
+      serviceAccountName: my-app-sa
       containers:
         - name: postgres
           image: postgres:16
           ports:
             - containerPort: 5432
-          env:
-            - name: POSTGRES_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: AUTH_POSTGRES_USER
-            - name: POSTGRES_DB
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: AUTH_POSTGRES_DB
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: AUTH_POSTGRES_PASSWORD
+          # Override command to load Vault secrets and then start Postgres
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              . /vault/secrets/env-vars
+              exec docker-entrypoint.sh postgres
           volumeMounts:
             - name: pgdata
               mountPath: /var/lib/postgresql/data
           readinessProbe:
             exec:
-              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+              # Source the secrets in the probe shell so pg_isready has the variables
+              command: ["sh", "-c", ". /vault/secrets/env-vars && pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
@@ -67,6 +68,7 @@ spec:
     app: postgres-auth
   ports:
     - port: 5432
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -91,34 +93,35 @@ spec:
     metadata:
       labels:
         app: postgres-campaign
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "my-app-role"
+        vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        # Map the specific Campaign DB keys to standard Postgres environment variables
+        vault.hashicorp.com/agent-inject-template-env-vars: |
+          {{- with secret "secret/data/my-app/env" -}}
+          export POSTGRES_USER="{{ .Data.data.CAMPAIGN_POSTGRES_USER }}"
+          export POSTGRES_DB="{{ .Data.data.CAMPAIGN_POSTGRES_DB }}"
+          export POSTGRES_PASSWORD="{{ .Data.data.CAMPAIGN_POSTGRES_PASSWORD }}"
+          {{- end -}}
     spec:
+      serviceAccountName: my-app-sa
       containers:
         - name: postgres
           image: postgres:16
           ports:
             - containerPort: 5432
-          env:
-            - name: POSTGRES_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: CAMPAIGN_POSTGRES_USER
-            - name: POSTGRES_DB
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: CAMPAIGN_POSTGRES_DB
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: CAMPAIGN_POSTGRES_PASSWORD
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              . /vault/secrets/env-vars
+              exec docker-entrypoint.sh postgres
           volumeMounts:
             - name: pgdata
               mountPath: /var/lib/postgresql/data
           readinessProbe:
             exec:
-              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+              command: ["sh", "-c", ". /vault/secrets/env-vars && pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
@@ -135,6 +138,7 @@ spec:
     app: postgres-campaign
   ports:
     - port: 5432
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -159,34 +163,35 @@ spec:
     metadata:
       labels:
         app: postgres-analytics
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "my-app-role"
+        vault.hashicorp.com/agent-inject-secret-env-vars: "secret/data/my-app/env"
+        # Map the specific Analytics DB keys to standard Postgres environment variables
+        vault.hashicorp.com/agent-inject-template-env-vars: |
+          {{- with secret "secret/data/my-app/env" -}}
+          export POSTGRES_USER="{{ .Data.data.ANALYTICS_POSTGRES_USER }}"
+          export POSTGRES_DB="{{ .Data.data.ANALYTICS_POSTGRES_DB }}"
+          export POSTGRES_PASSWORD="{{ .Data.data.ANALYTICS_POSTGRES_PASSWORD }}"
+          {{- end -}}
     spec:
+      serviceAccountName: my-app-sa
       containers:
         - name: postgres
           image: postgres:16
           ports:
             - containerPort: 5432
-          env:
-            - name: POSTGRES_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: ANALYTICS_POSTGRES_USER
-            - name: POSTGRES_DB
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: ANALYTICS_POSTGRES_DB
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: ANALYTICS_POSTGRES_PASSWORD
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              . /vault/secrets/env-vars
+              exec docker-entrypoint.sh postgres
           volumeMounts:
             - name: pgdata
               mountPath: /var/lib/postgresql/data
           readinessProbe:
             exec:
-              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+              command: ["sh", "-c", ". /vault/secrets/env-vars && pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
