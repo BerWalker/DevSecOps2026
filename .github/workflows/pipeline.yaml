@@ -73,7 +73,35 @@ jobs:
         run: kubectl apply -k kubernetes/
 
       - name: Wait for pods
-        run: kubectl wait --for=condition=ready pod --all --timeout=900s
+        run: |
+          echo "=== Waiting for Vault Agent Injector webhook ==="
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=vault-agent-injector -n vault --timeout=120s
+
+          echo "=== Waiting for Postgres pods ==="
+          kubectl wait --for=condition=ready pod -l app=postgres-auth    --timeout=300s || true
+          kubectl wait --for=condition=ready pod -l app=postgres-campaign --timeout=300s || true
+          kubectl wait --for=condition=ready pod -l app=postgres-analytics --timeout=300s || true
+
+          echo "=== Waiting for remaining pods ==="
+          kubectl wait --for=condition=ready pod --all --timeout=300s
+
+      - name: Debug pod status (on failure)
+        if: failure()
+        run: |
+          echo "=== POD STATUS ==="
+          kubectl get pods -o wide
+          echo ""
+          echo "=== EVENTS ==="
+          kubectl get events --sort-by='.lastTimestamp' | tail -60
+          echo ""
+          for pod in $(kubectl get pods --no-headers -o custom-columns=':metadata.name'); do
+            echo "=== DESCRIBE $pod ==="
+            kubectl describe pod "$pod" | tail -30
+            echo ""
+            echo "=== LOGS $pod (main) ==="
+            kubectl logs "$pod" --all-containers=true --tail=20 2>/dev/null || true
+            echo ""
+          done
 
       - name: Port-forward gateway
         run: kubectl port-forward svc/gateway 5000:80 &
