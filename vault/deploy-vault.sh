@@ -38,6 +38,8 @@ echo "1. Installing Vault via Helm..."
 helm install vault hashicorp/vault --namespace vault -f vault/override-values.yaml
 
 echo "2. Waiting for vault-0 pod to start..."
+echo "Waiting for vault-0 pod to be created..."
+for i in $(seq 1 30); do kubectl get pod/vault-0 -n vault &>/dev/null && break || sleep 2; done
 kubectl wait --for=jsonpath='{.status.phase}'=Running pod/vault-0 -n vault --timeout=120s
 kubectl get pods -n vault
 
