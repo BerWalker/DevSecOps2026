@@ -53,6 +53,9 @@ jobs:
 
       - name: Start minikube
         uses: medyagh/setup-minikube@latest
+        with:
+          cpus: max
+          memory: max
 
       - name: Build and load images
         run: |
@@ -70,7 +73,7 @@ jobs:
         run: kubectl apply -k kubernetes/
 
       - name: Wait for pods
-        run: kubectl wait --for=condition=ready pod --all --timeout=300s
+        run: kubectl wait --for=condition=ready pod --all --timeout=900s
 
       - name: Port-forward gateway
         run: kubectl port-forward svc/gateway 5000:80 &
