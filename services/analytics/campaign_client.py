@@ -1,6 +1,4 @@
-import json
-import urllib.error
-import urllib.request
+import requests
 from typing import Any
 
 from services.analytics.config import Config
@@ -25,25 +23,24 @@ def _request(
         headers["Authorization"] = f"Bearer {auth_token}"
 
     url = f"{Config.CAMPAIGN_SERVICE_URL}{path}"
-    request = urllib.request.Request(url, headers=headers, method="GET")
 
     try:
-        with urllib.request.urlopen(request, timeout=5) as response:
-            body = response.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        payload = response.json()
+    except requests.exceptions.HTTPError as exc:
         try:
-            payload = json.loads(exc.read().decode("utf-8"))
+            payload = exc.response.json()
             message = payload.get("message", "Campaign service error.")
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except ValueError:
             message = "Campaign service unavailable."
-        status = exc.code if exc.code in (404, 401) else 502
+        status = exc.response.status_code if exc.response.status_code in (404, 401) else 502
         raise CampaignClientError(message, status) from exc
-    except urllib.error.URLError as exc:
+    except requests.RequestException as exc:
         raise CampaignClientError(
             "Campaign service unavailable.", 502
         ) from exc
 
-    payload = json.loads(body)
     if payload.get("status") != "success":
         message = payload.get("message", "Campaign service error.")
         raise CampaignClientError(message, 502)

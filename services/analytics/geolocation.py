@@ -1,7 +1,5 @@
 import ipaddress
-import json
-import urllib.error
-import urllib.request
+import requests
 
 
 def lookup_ip(ip: str | None) -> dict:
@@ -21,9 +19,10 @@ def lookup_ip(ip: str | None) -> dict:
         "?fields=status,country,regionName,city,lat,lon"
     )
     try:
-        with urllib.request.urlopen(url, timeout=2) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        response = requests.get(url, timeout=2)
+        response.raise_for_status()
+        data = response.json()
+    except (requests.RequestException, ValueError):
         return {}
 
     if data.get("status") != "success":

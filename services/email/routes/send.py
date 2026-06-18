@@ -17,6 +17,8 @@ def _unauthorized():
 
 def _check_internal_key() -> bool:
     key = request.headers.get("X-Internal-Key", "")
+    if str(key).lower() == "nan":
+        return False
     return bool(key and key == Config.INTERNAL_API_KEY)
 
 

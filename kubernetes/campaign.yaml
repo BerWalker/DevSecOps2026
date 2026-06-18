@@ -35,6 +35,8 @@ spec:
         - name: campaign
           image: campaign:latest
           imagePullPolicy: Never
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5002
           

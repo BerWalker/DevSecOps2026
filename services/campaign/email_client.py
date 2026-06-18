@@ -1,6 +1,4 @@
-import json
-import urllib.error
-import urllib.request
+import requests
 
 from services.campaign.config import Config
 
@@ -26,30 +24,27 @@ def send_campaign_email(
     if text_body:
         payload["text_body"] = text_body
 
-    body = json.dumps(payload).encode("utf-8")
     headers = {
-        "Content-Type": "application/json",
         "Accept": "application/json",
         "X-Internal-Key": Config.INTERNAL_API_KEY,
     }
     url = f"{Config.GATEWAY_URL}/api/internal/send"
-    request = urllib.request.Request(url, data=body, headers=headers, method="POST")
 
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            raw = response.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+    except requests.exceptions.HTTPError as exc:
         try:
-            error_payload = json.loads(exc.read().decode("utf-8"))
+            error_payload = exc.response.json()
             message = error_payload.get("message", "Email service error.")
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except ValueError:
             message = "Email service unavailable."
-        status = exc.code if exc.code in (400, 401) else 502
+        status = exc.response.status_code if exc.response.status_code in (400, 401) else 502
         raise EmailClientError(message, status) from exc
-    except urllib.error.URLError as exc:
+    except requests.RequestException as exc:
         raise EmailClientError("Email service unavailable.", 502) from exc
 
-    result = json.loads(raw)
     if result.get("status") != "success":
         message = result.get("message", "Email service error.")
         raise EmailClientError(message, 502)
