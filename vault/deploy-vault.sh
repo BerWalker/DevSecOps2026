@@ -1,6 +1,24 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
+
+get_env() {
+  local key="$1"
+  local default="$2"
+  if [[ -f "$ENV_FILE" ]]; then
+    local line
+    line=$(grep -E "^${key}=" "$ENV_FILE" | head -1 || true)
+    if [[ -n "$line" ]]; then
+      echo "${line#*=}"
+      return
+    fi
+  fi
+  echo "$default"
+}
+
 if helm status vault -n vault >/dev/null 2>&1; then
   echo "Removing existing Vault Helm release..."
   helm uninstall vault -n vault
@@ -77,8 +95,14 @@ echo "7. Enabling KV Secrets Engine..."
 kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN='$ROOT_TOKEN' vault secrets enable -path=secret kv-v2" 2>/dev/null || true
 
 echo "8. Writing application secrets to Vault..."
+INTERNAL_API_KEY="$(get_env INTERNAL_API_KEY 'change-me-internal-key')"
+JWT_SECRET_KEY="$(get_env JWT_SECRET_KEY 'super-secret-key')"
+GMAIL_FROM="$(get_env GMAIL_FROM 'your@gmail.com')"
+GMAIL_USER="$(get_env GMAIL_USER "$GMAIL_FROM")"
+GMAIL_APP_PASSWORD="$(get_env GMAIL_APP_PASSWORD 'xxxx xxxx xxxx xxxx')"
+
 kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN='$ROOT_TOKEN' vault kv put secret/my-app/env \
-  INTERNAL_API_KEY='change-me-internal-key' \
+  INTERNAL_API_KEY='${INTERNAL_API_KEY}' \
   AUTH_POSTGRES_USER='auth' \
   AUTH_POSTGRES_DB='auth_db' \
   AUTH_DATABASE_URL='postgresql+psycopg://auth:auth@postgres-auth:5432/auth_db' \
@@ -91,23 +115,25 @@ kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN='$ROOT_TOKEN' vault kv put s
   ANALYTICS_POSTGRES_DB='analytics_db' \
   ANALYTICS_DATABASE_URL='postgresql+psycopg://analytics:analytics@postgres-analytics:5432/analytics_db' \
   ANALYTICS_POSTGRES_PASSWORD='analytics' \
-  JWT_SECRET_KEY='super-secret-key' \
-  GMAIL_FROM='your@gmail.com' \
-  GMAIL_USER='your@gmail.com' \
-  GMAIL_APP_PASSWORD='xxxx xxxx xxxx xxxx'"
+  JWT_SECRET_KEY='${JWT_SECRET_KEY}' \
+  GMAIL_FROM='${GMAIL_FROM}' \
+  GMAIL_USER='${GMAIL_USER}' \
+  GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' \
+  SMTP_HOST='$(get_env SMTP_HOST 'smtp.gmail.com')' \
+  SMTP_PORT='$(get_env SMTP_PORT '587')'"
 
 echo "9. Enabling Kubernetes Auth Method..."
 kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN='$ROOT_TOKEN' vault auth enable kubernetes" 2>/dev/null || true
 
 echo "10. Configuring Kubernetes Auth (must run inside vault-0 — host env vars are empty)..."
-cat <<SCRIPT | kubectl exec -i -n vault vault-0 -- sh
-VAULT_TOKEN=$ROOT_TOKEN
+kubectl exec -n vault vault-0 -- sh -c "
+export VAULT_TOKEN='${ROOT_TOKEN}'
 JWT=\$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-vault write auth/kubernetes/config \\
-  kubernetes_host="https://\${KUBERNETES_SERVICE_HOST}:\${KUBERNETES_SERVICE_PORT:-443}" \\
-  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \\
-  token_reviewer_jwt="\$JWT"
-SCRIPT
+vault write auth/kubernetes/config \
+  kubernetes_host=\"https://\${KUBERNETES_SERVICE_HOST}:\${KUBERNETES_SERVICE_PORT:-443}\" \
+  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+  token_reviewer_jwt=\"\${JWT}\"
+"
 
 echo "11. Creating Read-Only Policy..."
 kubectl exec -n vault -i vault-0 -- sh -c "VAULT_TOKEN='$ROOT_TOKEN' vault policy write my-app-policy -" <<EOF
@@ -123,5 +149,10 @@ kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN='$ROOT_TOKEN' vault write au
     policies=my-app-policy \
     ttl=1h"
 
-echo "13. Setup complete. Starting port-forwarding (Press Ctrl+C to stop)..."
+echo "13. Restarting app pods to load Vault secrets into running processes..."
+kubectl rollout restart deployment/postgres-auth deployment/postgres-campaign deployment/postgres-analytics \
+  deployment/auth deployment/campaign deployment/analytics deployment/email 2>/dev/null || true
+kubectl rollout status deployment/email --timeout=120s 2>/dev/null || true
+
+echo "14. Setup complete. Starting port-forwarding (Press Ctrl+C to stop)..."
 kubectl port-forward svc/vault-ui 8200:8200 -n vault

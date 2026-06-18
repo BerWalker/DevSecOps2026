@@ -18,10 +18,20 @@ minikube image load email:latest
 echo "3. Applying Kubernetes manifests..."
 kubectl apply -k kubernetes/
 
-sleep 15
+if kubectl get namespace vault >/dev/null 2>&1; then
+  echo "4. Reloading pods that consume Vault secrets..."
+  kubectl rollout restart deployment/postgres-auth deployment/postgres-campaign deployment/postgres-analytics \
+    deployment/auth deployment/campaign deployment/analytics deployment/email
+  kubectl rollout status deployment/email --timeout=120s
+else
+  echo "4. Vault namespace not found — run ./vault/deploy-vault.sh before sending emails."
+fi
+
+sleep 10
 
 kubectl get pods
 kubectl get svc
 
 echo "Local Kubernetes deploy complete."
-echo "If you are using Kind or Minikube and the cluster cannot see local Docker images, load the images manually before running this script."
+
+kubectl port-forward svc/gateway 5000:80
