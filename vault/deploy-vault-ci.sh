@@ -45,6 +45,10 @@ helm install vault hashicorp/vault \
   --wait \
   --timeout=120s
 
+echo "Waiting for vault-0 pod to be created..."
+for i in $(seq 1 30); do kubectl get pod/vault-0 -n vault &>/dev/null && break || sleep 2; done
+kubectl wait --for=jsonpath='{.status.phase}'=Running pod/vault-0 -n vault --timeout=120s
+
 echo "   Vault is ready (dev mode — auto-initialized, auto-unsealed)."
 kubectl get pods -n vault
 
