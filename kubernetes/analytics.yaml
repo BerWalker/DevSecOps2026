@@ -35,6 +35,8 @@ spec:
         - name: analytics
           image: analytics:latest
           imagePullPolicy: Never
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5003
           

@@ -35,6 +35,8 @@ spec:
         - name: auth
           image: auth:latest
           imagePullPolicy: Never
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5001
           

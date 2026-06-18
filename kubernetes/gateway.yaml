@@ -15,6 +15,8 @@ spec:
       containers:
         - name: gateway
           image: nginx:alpine
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 80
           volumeMounts:

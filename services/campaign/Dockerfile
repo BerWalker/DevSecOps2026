@@ -15,4 +15,7 @@ RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 EXPOSE 5002
 
+RUN useradd -m appuser
+USER appuser
+
 ENTRYPOINT ["/docker-entrypoint.sh"]

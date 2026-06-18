@@ -32,6 +32,8 @@ spec:
         - name: email
           image: email:latest
           imagePullPolicy: Never
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5010
           
