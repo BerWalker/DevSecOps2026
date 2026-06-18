@@ -1,0 +1,31 @@
+# CI-only Vault config: dev mode, single replica, minimal resources.
+# Dev mode auto-initializes and auto-unseals — no manual unseal needed.
+server:
+  affinity: ""
+  dev:
+    enabled: true
+    devRootToken: "ci-root-token"
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 250m
+
+injector:
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 250m
+  agentDefaults:
+    cpuRequest: "25m"
+    cpuLimit: "250m"
+    memRequest: "32Mi"
+    memLimit: "128Mi"
+
+ui:
+  enabled: false

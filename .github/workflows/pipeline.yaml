@@ -67,7 +67,7 @@ jobs:
           minikube image load frontend:latest auth:latest campaign:latest analytics:latest email:latest
 
       - name: Deploy Vault
-        run: ./vault/deploy-vault.sh
+        run: ./vault/deploy-vault-ci.sh
 
       - name: Deploy
         run: kubectl apply -k kubernetes/
