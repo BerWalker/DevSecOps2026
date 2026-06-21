@@ -98,8 +98,8 @@ jobs:
         run: |
           NETWORK="$(docker compose ps -q gateway | xargs docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}')"
           docker run --rm \
+            --user root \
             --network "$NETWORK" \
-            -u $(id -u):$(id -g) \
             -v "$PWD:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
@@ -115,6 +115,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
+          if-no-files-found: error
           path: |
             zap-report.json
             zap-report.html
