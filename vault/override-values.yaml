@@ -17,7 +17,7 @@ server:
         storage "raft" {
           path = "/vault/data"
           
-          # Configuração para que os nós encontrem uns aos outros e formem o cluster
+          # Configuration so nodes can discover each other and form the cluster
           retry_join {
             leader_api_addr = "http://vault-0.vault-internal:8200"
           }

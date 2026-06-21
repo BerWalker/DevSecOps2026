@@ -9,4 +9,4 @@ python -m pip install pre-commit
 pre-commit install --install-hooks
 
 echo
-echo "Pre-commit instalado. O Gitleaks vai rodar automaticamente antes de cada commit."
+echo "Pre-commit installed. Gitleaks will run automatically before each commit."

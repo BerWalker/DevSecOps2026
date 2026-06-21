@@ -1,89 +1,89 @@
 # Campaign microservice (`services/campaign`)
 
-CRUD de campanhas de phishing simulado: nome, grupos de alvos, conteúdo do e-mail e link de rastreamento único por alvo.
+CRUD for simulated phishing campaigns: name, target groups, email content, and a unique tracking link per target.
 
 Base URL (via gateway): `http://localhost:5000`
 
-## Autenticação
+## Authentication
 
-Rotas `/api/campaigns*` exigem JWT do serviço auth (`Authorization: Bearer <token>`). A validação é stateless (assinatura e expiração); revogação de logout é gerida apenas pelo serviço auth.
+`/api/campaigns*` routes require a JWT from the auth service (`Authorization: Bearer <token>`). Validation is stateless (signature and expiry); logout revocation is handled only by the auth service.
 
-O rastreamento de cliques é feito pelo serviço **analytics** (`/track/<token>`). Este serviço expõe apenas a API interna de resolução de tokens.
+Click tracking is handled by the **analytics** service (`/track/<token>`). This service exposes only the internal token resolution API.
 
-## Modelo
+## Model
 
-| Entidade | Descrição |
-|----------|-----------|
-| `Campaign` | Nome + conteúdo do e-mail |
-| `TargetGroup` | Grupo de alvos dentro da campanha |
-| `Target` | Alvo (e-mail + nome opcional) |
-| `TrackingLink` | Token único por alvo |
-| `Interaction` | Legado (eventos são registrados no serviço analytics) |
+| Entity | Description |
+|--------|-------------|
+| `Campaign` | Name + email content |
+| `TargetGroup` | Target group within a campaign |
+| `Target` | Target (email + optional name) |
+| `TrackingLink` | Unique token per target |
+| `Interaction` | Legacy (events are recorded in the analytics service) |
 
-Ao criar ou atualizar `target_groups`, um link de rastreamento é gerado automaticamente para cada alvo.
+When creating or updating `target_groups`, a tracking link is generated automatically for each target.
 
 ## Endpoints
 
-| Método | URL | Auth |
+| Method | URL | Auth |
 |--------|-----|------|
-| `GET` | `/api/campaigns` | Sim |
-| `POST` | `/api/campaigns` | Sim |
-| `GET` | `/api/campaigns/<id>` | Sim |
-| `PUT` | `/api/campaigns/<id>` | Sim |
-| `DELETE` | `/api/campaigns/<id>` | Sim |
-| `GET` | `/api/internal/tracking-links/<token>` | `X-Internal-Key` (serviço analytics) |
+| `GET` | `/api/campaigns` | Yes |
+| `POST` | `/api/campaigns` | Yes |
+| `GET` | `/api/campaigns/<id>` | Yes |
+| `PUT` | `/api/campaigns/<id>` | Yes |
+| `DELETE` | `/api/campaigns/<id>` | Yes |
+| `GET` | `/api/internal/tracking-links/<token>` | `X-Internal-Key` (analytics service) |
 
-## Exemplo — criar campanha
+## Example — create campaign
 
 ```json
 POST /api/campaigns
 Authorization: Bearer <token>
 
 {
-  "name": "Campanha Natal",
-  "email_content": "<p>Clique no link para confirmar seus dados.</p>",
+  "name": "Holiday Campaign",
+  "email_content": "<p>Click the link to confirm your details.</p>",
   "target_groups": [
     {
-      "name": "Financeiro",
+      "name": "Finance",
       "targets": [
-        { "email": "joao@empresa.com", "name": "João Silva" },
-        { "email": "maria@empresa.com", "name": "Maria Souza" }
+        { "email": "john@company.com", "name": "John Smith" },
+        { "email": "mary@company.com", "name": "Mary Jones" }
       ]
     }
   ]
 }
 ```
 
-Resposta (`201`) inclui `target_groups[].targets[].tracking.url` — link único por alvo.
+Response (`201`) includes `target_groups[].targets[].tracking.url` — one unique link per target.
 
-## Variáveis de ambiente
+## Environment variables
 
-| Variável | Descrição |
-|----------|-----------|
-| `CAMPAIGN_DATABASE_URL` | PostgreSQL dedicado (`campaign_db`) |
-| `JWT_SECRET_KEY` | Mesmo segredo do auth |
-| `CAMPAIGN_SERVICE_PORT` | Porta interna (padrão `5002`) |
-| `TRACKING_BASE_URL` | Base pública dos links (padrão `http://localhost:5000`) |
-| `INTERNAL_API_KEY` | Segredo para API interna (analytics) |
+| Variable | Description |
+|----------|-------------|
+| `CAMPAIGN_DATABASE_URL` | Dedicated PostgreSQL (`campaign_db`) |
+| `JWT_SECRET_KEY` | Same secret as auth |
+| `CAMPAIGN_SERVICE_PORT` | Internal port (default `5002`) |
+| `TRACKING_BASE_URL` | Public base URL for links (default `http://localhost:5000`) |
+| `INTERNAL_API_KEY` | Secret for internal API (analytics) |
 
-## Subir com Docker
+## Run with Docker
 
-Na raiz do projeto:
+From the project root:
 
-```powershell
+```bash
 docker compose up -d --build
 ```
 
-Migrations do campaign são aplicadas no start do container.
+Campaign migrations are applied on container start.
 
-## Desenvolvimento local (opcional)
+## Local development (optional)
 
-```powershell
+```bash
 docker compose up -d postgres-campaign
-$env:FLASK_APP = "services.campaign.app"
-$env:CAMPAIGN_DATABASE_URL = "postgresql+psycopg://campaign:campaign@localhost:5433/campaign_db"
+export FLASK_APP="services.campaign.app"
+export CAMPAIGN_DATABASE_URL="postgresql+psycopg://campaign:campaign@localhost:5433/campaign_db"
 flask db upgrade
 python -m services.campaign.app
 ```
 
-Base URL direta: `http://localhost:5002` (sem gateway).
+Direct base URL: `http://localhost:5002` (no gateway).
