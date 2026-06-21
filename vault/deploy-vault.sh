@@ -89,7 +89,7 @@ echo "Vault Cluster is 100% up and unsealed!"
 kubectl get pods -n vault
 kubectl get svc -n vault vault-ui
 
-# Define o token para a sessão atual dentro dos comandos
+# Set the token for the current session inside commands
 export VAULT_TOKEN=$ROOT_TOKEN
 export VAULT_ADDR="http://127.0.0.1:8200"
 
