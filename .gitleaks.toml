@@ -1,0 +1,16 @@
+title = "devsecops2026 gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documentacao, exemplos e placeholders de desenvolvimento"
+paths = [
+  '''(?:^|/)\.env\.example$''',
+  '''(?:^|/)vault/ci-values\.yaml$''',
+  '''(?:^|/)vault/deploy-vault-ci\.sh$''',
+  '''(?:^|/)docs/''',
+  '''(?:^|/)tests/integration/''',
+  '''(?:^|/)\.github/workflows/pipeline\.yaml$''',
+  '''README\.md$''',
+]
