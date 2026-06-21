@@ -88,7 +88,7 @@ jobs:
     needs: fossa
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Prepare environment
         run: cp .env.example .env
@@ -105,10 +105,10 @@ jobs:
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
               -t http://gateway \
-              -c /zap/wrk/.zap/rules.tsv \
-              -J /zap/wrk/zap-report.json \
-              -r /zap/wrk/zap-report.html \
-              -w /zap/wrk/zap-report.md \
+              -c .zap/rules.tsv \
+              -J zap-report.json \
+              -r zap-report.html \
+              -w zap-report.md \
               -I
 
       - name: Upload ZAP report

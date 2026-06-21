@@ -34,7 +34,6 @@ rules:
       - metavariable-regex:
           metavariable: $DEFAULT
           regex: .+
-      # Tirei essa bomba de  semgrep de pegar o timeout no  services/auth/config.py
       - metavariable-regex:
           metavariable: $KEY
           regex: (?i)^(?!.*(EXPIRES|SECONDS|TIMEOUT|TTL|INTERVAL|DURATION|PORT|SIZE|LIMIT|COUNT|ALGORITHM)$).*$

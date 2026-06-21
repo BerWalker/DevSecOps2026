@@ -8,7 +8,6 @@ from services.auth import models
 from services.auth.routes.auth import auth_bp
 from services.auth.routes.internal import internal_bp
 
-
 def create_app(config_class: type = Config) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_class)
