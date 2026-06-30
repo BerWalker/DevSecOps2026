@@ -1,0 +1,5 @@
+aws_region       = "us-east-1"
+project_name     = "phishguard"
+instance_type    = "t3.micro"
+ssh_key_name     = "my-aws-key"
+allowed_ssh_cidr = ["YOUR_IP/32"]

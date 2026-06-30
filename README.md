@@ -102,6 +102,7 @@ Todos os serviços backend são acessíveis **apenas via gateway** a partir do e
 | [Docker Compose](https://docs.docker.com/compose/) | v2 | Orquestração local |
 | [kubectl](https://kubernetes.io/docs/tasks/tools/) | 1.28+ | Deploy Kubernetes |
 | Cluster Kubernetes | — | Docker Desktop K8s, Minikube ou Kind |
+| [Terraform](https://developer.hashicorp.com/terraform/install) | 1.0+ | AWS provisioning (optional) |
 | Python 3.12 | — | Testes de integração locais |
 
 ---
@@ -126,6 +127,7 @@ ProjetoFinal/
 │   ├── postgres.yaml
 │   ├── gateway.yaml
 │   └── ...                   # Um arquivo por serviço
+├── terraform/                # IaC AWS (VPC + EC2)
 └── tests/
     └── integration/          # Testes end-to-end
 ```
@@ -324,6 +326,23 @@ kubectl delete -k kubernetes/
 # Remover volumes persistentes (dados dos bancos)
 kubectl delete pvc auth-pg-data campaign-pg-data analytics-pg-data
 ```
+
+---
+
+## AWS provisioning (Terraform)
+
+Minimal setup: VPC, security group, and EC2 with Docker. See [`terraform/README.md`](terraform/README.md).
+
+```powershell
+cd terraform
+Copy-Item terraform.tfvars.example terraform.tfvars
+# Edit ssh_key_name and allowed_ssh_cidr
+
+terraform init
+terraform apply
+```
+
+Then SSH into the instance, clone the repo, and run `docker compose up -d --build`. The app URL will be `http://<PUBLIC_IP>:5000`.
 
 ---
 
