@@ -9,7 +9,7 @@ on:
 
 jobs:
   # ==========================================
-  # STATIC ANALYSIS & SECURITY (Run in Parallel)
+  # 1. TESTS (Run in Parallel)
   # ==========================================
   secret-scanning:
     name: Secret Scanning
@@ -51,9 +51,6 @@ jobs:
         with:
           api-key: ${{ secrets.FOSSA_APP_TOKEN }}
 
-  # ==========================================
-  # TESTING & DAST (Run in Parallel)
-  # ==========================================
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -125,21 +122,63 @@ jobs:
         if: always()
         run: docker compose down -v --remove-orphans
 
-  k8s-integration-tests:
-    name: Kubernetes Integration
+  # ==========================================
+  # 2. BUILD (After all tests pass)
+  # ==========================================
+  build:
+    name: Build Images
+    needs: [secret-scanning, semgrep, fossa, integration-tests, dast]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: actions/setup-python@v5
+
+      - name: Build Docker images
+        run: |
+          docker build -f frontend/Dockerfile           -t frontend:latest .
+          docker build -f services/auth/Dockerfile      -t auth:latest .
+          docker build -f services/campaign/Dockerfile  -t campaign:latest .
+          docker build -f services/analytics/Dockerfile -t analytics:latest .
+          docker build -f services/email/Dockerfile     -t email:latest .
+
+      - name: Save images
+        run: |
+          mkdir -p /tmp/docker-images
+          docker save frontend:latest -o /tmp/docker-images/frontend.tar
+          docker save auth:latest      -o /tmp/docker-images/auth.tar
+          docker save campaign:latest  -o /tmp/docker-images/campaign.tar
+          docker save analytics:latest -o /tmp/docker-images/analytics.tar
+          docker save email:latest     -o /tmp/docker-images/email.tar
+
+      - name: Upload images
+        uses: actions/upload-artifact@v4
         with:
-          python-version: "3.12"
+          name: docker-images
+          path: /tmp/docker-images/*.tar
+          retention-days: 1
 
-      - name: Prepare environment
-        run: cp .env.example .env
+  # ==========================================
+  # 3. DEPLOY (After build passes)
+  # ==========================================
+  deploy:
+    name: Deploy to Kubernetes
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Download images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp/docker-images
+
+      - name: Load images
+        run: |
+          docker load -i /tmp/docker-images/frontend.tar
+          docker load -i /tmp/docker-images/auth.tar
+          docker load -i /tmp/docker-images/campaign.tar
+          docker load -i /tmp/docker-images/analytics.tar
+          docker load -i /tmp/docker-images/email.tar
 
       - name: Start minikube
         uses: medyagh/setup-minikube@latest
@@ -147,13 +186,8 @@ jobs:
           cpus: max
           memory: max
 
-      - name: Build and load images
+      - name: Load images into minikube
         run: |
-          docker build -f frontend/Dockerfile          -t frontend:latest .
-          docker build -f services/auth/Dockerfile     -t auth:latest .
-          docker build -f services/campaign/Dockerfile -t campaign:latest .
-          docker build -f services/analytics/Dockerfile -t analytics:latest .
-          docker build -f services/email/Dockerfile    -t email:latest .
           minikube image load frontend:latest auth:latest campaign:latest analytics:latest email:latest
 
       - name: Deploy Vault
@@ -201,9 +235,3 @@ jobs:
           for i in $(seq 1 30); do
             curl -sf http://localhost:5000/ && break || sleep 5
           done
-
-      - name: Run integration tests
-        env:
-          INTEGRATION_BASE_URL: http://localhost:5000
-          INTERNAL_API_KEY: change-me-internal-key
-        run: python -m pytest tests/ -v
