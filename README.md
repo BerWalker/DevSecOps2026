@@ -129,6 +129,8 @@ devsecops2026/
 │   ├── config.yaml           # ConfigMap + Secret
 │   ├── postgres.yaml
 │   ├── gateway.yaml
+│   └── ...                   # Um arquivo por serviço
+├── terraform/                # IaC AWS (VPC + EC2)
 │   └── ...                   # One file per service
 ├── vault/                    # Helm scripts for HashiCorp Vault
 ├── docs/                     # Per-microservice documentation
@@ -375,7 +377,24 @@ kubectl delete namespace vault
 
 ---
 
-## Verify it works
+## AWS provisioning (Terraform)
+
+Minimal setup: VPC, security group, and EC2 with Docker. See [`terraform/README.md`](terraform/README.md).
+
+```powershell
+cd terraform
+Copy-Item terraform.tfvars.example terraform.tfvars
+# Edit ssh_key_name and allowed_ssh_cidr
+
+terraform init
+terraform apply
+```
+
+Then SSH into the instance, clone the repo, and run `docker compose up -d --build`. The app URL will be `http://<PUBLIC_IP>:5000`.
+
+---
+
+## Testar se está funcionando
 
 ### Quick checklist
 
