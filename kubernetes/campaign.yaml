@@ -40,12 +40,12 @@ spec:
           ports:
             - containerPort: 5002
           
-          # Injeção das configurações que NÃO são segredos (ConfigMap)
+          # Inject non-secret configuration (ConfigMap)
           envFrom:
             - configMapRef:
                 name: app-config
           
-          # Carregamento do Vault e execução da aplicação
+          # Load Vault secrets and run the application
           command: ["/bin/sh", "-c"]
           args:
             - |

@@ -1,18 +1,18 @@
 # PhishGuard Console
 
-Plataforma de simulação de phishing com arquitetura de microserviços. Permite criar campanhas, enviar e-mails com links de rastreamento, registrar cliques e visualizar métricas em um dashboard.
+Phishing simulation platform with a microservices architecture. Create campaigns, send emails with tracking links, record clicks, and view metrics on a dashboard.
 
-**Stack:** Python 3.12 (Flask), PostgreSQL 16, nginx (API Gateway), frontend estático (HTML/JS), Docker Compose e Kubernetes.
+**Stack:** Python 3.12 (Flask), PostgreSQL 16, nginx (API Gateway), static frontend (HTML/JS), Docker Compose, and Kubernetes.
 
 ---
 
-## Arquitetura
+## Architecture
 
-### Visão geral
+### Overview
 
 ```mermaid
 flowchart TB
-    subgraph Public["Acesso público"]
+    subgraph Public["Public access"]
         Browser["Browser"]
     end
 
@@ -20,15 +20,15 @@ flowchart TB
         Gateway["gateway :80<br/>nginx — CORS, rate limit, proxy"]
     end
 
-    subgraph Apps["Aplicação"]
+    subgraph Apps["Application"]
         Frontend["frontend :80<br/>HTML / JS"]
         Auth["auth :5001<br/>JWT, login, register"]
-        Campaign["campaign :5002<br/>campanhas, tracking"]
-        Analytics["analytics :5003<br/>dashboard, cliques"]
+        Campaign["campaign :5002<br/>campaigns, tracking"]
+        Analytics["analytics :5003<br/>dashboard, clicks"]
         Email["email :5010<br/>SMTP / Gmail"]
     end
 
-    subgraph Data["Persistência"]
+    subgraph Data["Persistence"]
         PGAuth[("postgres-auth<br/>auth_db")]
         PGCampaign[("postgres-campaign<br/>campaign_db")]
         PGAnalytics[("postgres-analytics<br/>analytics_db")]
@@ -49,15 +49,15 @@ flowchart TB
 
     Campaign -.->|"introspect token"| Gateway
     Analytics -.->|"introspect token"| Gateway
-    Analytics -.->|"listar campanhas"| Campaign
-    Campaign -.->|"enviar e-mail"| Gateway
+    Analytics -.->|"list campaigns"| Campaign
+    Campaign -.->|"send email"| Gateway
 ```
 
-### Fluxo autenticado (ex.: dashboard)
+### Authenticated flow (e.g. dashboard)
 
 ```mermaid
 sequenceDiagram
-    actor U as Usuário
+    actor U as User
     participant G as gateway
     participant F as frontend
     participant A as analytics
@@ -65,194 +65,211 @@ sequenceDiagram
 
     U->>G: GET /dashboard.html
     G->>F: proxy
-    F-->>U: página HTML + JS
+    F-->>U: HTML page + JS
 
     U->>G: GET /api/analytics/dashboard<br/>Authorization: Bearer JWT
     G->>A: proxy
     A->>G: POST /api/internal/token/introspect
     G->>Au: proxy
-    Au-->>G: token válido (sub, email)
-    G-->>A: resposta
-    A->>A: consulta métricas no DB
+    Au-->>G: valid token (sub, email)
+    G-->>A: response
+    A->>A: query metrics from DB
     A-->>G: JSON dashboard
     G-->>U: 200 OK
 ```
 
-### Mapa de serviços
+### Service map
 
-| Serviço | Porta interna | Descrição |
-|---------|---------------|-----------|
-| `gateway` | 80 | Proxy reverso, CORS, rate limit, roteamento |
-| `frontend` | 80 | Interface web (login, dashboard, campanhas) |
-| `auth` | 5001 | Registro, login, JWT, introspecção de token |
-| `campaign` | 5002 | CRUD de campanhas, links de tracking, envio |
-| `analytics` | 5003 | Dashboard, métricas, registro de cliques |
-| `email` | 5010 | Envio de e-mails via SMTP (Gmail) |
-| `postgres-*` | 5432 | Um banco PostgreSQL por serviço |
+| Service | Internal port | Description |
+|---------|---------------|-------------|
+| `gateway` | 80 | Reverse proxy, CORS, rate limit, routing |
+| `frontend` | 80 | Web UI (login, dashboard, campaigns) |
+| `auth` | 5001 | Registration, login, JWT, token introspection |
+| `campaign` | 5002 | Campaign CRUD, tracking links, sending |
+| `analytics` | 5003 | Dashboard, metrics, click recording |
+| `email` | 5010 | Email delivery via SMTP (Gmail) |
+| `postgres-*` | 5432 | One PostgreSQL database per service |
 
-Todos os serviços backend são acessíveis **apenas via gateway** a partir do exterior.
-
----
-
-## Pré-requisitos
-
-| Ferramenta | Versão mínima | Uso |
-|------------|---------------|-----|
-| [Docker](https://docs.docker.com/get-docker/) | 24+ | Compose e build de imagens |
-| [Docker Compose](https://docs.docker.com/compose/) | v2 | Orquestração local |
-| [kubectl](https://kubernetes.io/docs/tasks/tools/) | 1.28+ | Deploy Kubernetes |
-| Cluster Kubernetes | — | Docker Desktop K8s, Minikube ou Kind |
-| [Terraform](https://developer.hashicorp.com/terraform/install) | 1.0+ | AWS provisioning (optional) |
-| Python 3.12 | — | Testes de integração locais |
+All backend services are reachable **only through the gateway** from outside the cluster/network.
 
 ---
 
-## Estrutura do projeto
+## Prerequisites
+
+| Tool | Minimum version | Purpose |
+|------|-----------------|---------|
+| [Docker](https://docs.docker.com/get-docker/) | 24+ | Compose and image builds |
+| [Docker Compose](https://docs.docker.com/compose/) | v2 | Local orchestration |
+| [kubectl](https://kubernetes.io/docs/tasks/tools/) | 1.28+ | Kubernetes deployment |
+| [Helm](https://helm.sh/docs/intro/install/) | 3+ | Vault on Kubernetes |
+| Kubernetes cluster | — | Minikube or Kind |
+| Python 3.12 | — | Integration tests and pre-commit |
+| [jq](https://jqlang.org/) | — | JSON parsing in curl examples (optional) |
+| [pre-commit](https://pre-commit.com/) | — | Secret scanning before commit (optional) |
+
+---
+
+## Project structure
 
 ```
-ProjetoFinal/
-├── compose.yaml              # Orquestração Docker Compose
-├── .env.example              # Variáveis de ambiente (copiar para .env)
+devsecops2026/
+├── compose.yaml              # Docker Compose orchestration
+├── .env.example              # Environment variables (copy to .env)
+├── deploy-local-k8s.sh       # Build, load, and deploy on Minikube
 ├── gateway/
-│   └── nginx.conf            # Configuração do API Gateway
-├── frontend/                 # SPA estática (HTML + JS)
+│   └── nginx.conf            # API Gateway configuration
+├── frontend/                 # Static SPA (HTML + JS)
 ├── services/
-│   ├── auth/                 # Autenticação e JWT
-│   ├── campaign/             # Campanhas e tracking
-│   ├── analytics/            # Métricas e dashboard
-│   └── email/                # Envio de e-mails
-├── kubernetes/               # Manifests K8s (Kustomize)
+│   ├── auth/                 # Authentication and JWT
+│   ├── campaign/             # Campaigns and tracking
+│   ├── analytics/            # Metrics and dashboard
+│   └── email/                # Email delivery
+├── kubernetes/               # K8s manifests (Kustomize)
 │   ├── kustomization.yaml
 │   ├── config.yaml           # ConfigMap + Secret
 │   ├── postgres.yaml
 │   ├── gateway.yaml
 │   └── ...                   # Um arquivo por serviço
 ├── terraform/                # IaC AWS (VPC + EC2)
+│   └── ...                   # One file per service
+├── vault/                    # Helm scripts for HashiCorp Vault
+├── docs/                     # Per-microservice documentation
+├── scripts/
+│   └── setup-pre-commit.sh   # Install pre-commit hooks
+├── .pre-commit-config.yaml   # Gitleaks pre-commit hook
+├── .gitleaks.toml            # Gitleaks rules and allowlist
+├── .semgrep/                 # Custom Semgrep rules
+├── .zap/                     # OWASP ZAP rules (DAST)
+├── .github/workflows/
+│   └── pipeline.yaml         # Full CI/CD pipeline
 └── tests/
-    └── integration/          # Testes end-to-end
+    └── integration/          # End-to-end tests
 ```
 
-Documentação detalhada por componente:
+Detailed documentation by component:
 
 - [Gateway](gateway/README.md)
-- [Auth](services/auth/README.md)
-- [Campaign](services/campaign/README.md)
-- [Analytics](services/analytics/README.md)
-- [Email](services/email/README.md)
+- [Auth](docs/AUTH.md)
+- [Campaign](docs/CAMPAIGN.md)
+- [Analytics](docs/ANALYTICS.md)
+- [Email](docs/EMAIL.md)
 
 ---
 
-## Configuração
+## Configuration
 
-### Variáveis de ambiente (Docker Compose)
+### Environment variables (Docker Compose)
 
-```powershell
-Copy-Item .env.example .env
+```bash
+cp .env.example .env
 ```
 
-Edite `.env` antes de subir em produção. Valores importantes:
+Edit `.env` before running in production. Important values:
 
-| Variável | Descrição | Padrão |
-|----------|-----------|--------|
-| `GATEWAY_PORT` | Porta pública do gateway no host | `5000` |
-| `JWT_SECRET_KEY` | Segredo compartilhado para JWT | alterar |
-| `INTERNAL_API_KEY` | Chave entre microserviços | alterar |
-| `TRACKING_BASE_URL` | URL pública dos links de tracking | `http://localhost:5000` |
-| `GMAIL_*` | Credenciais SMTP para envio de e-mail | — |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GATEWAY_PORT` | Public gateway port on the host | `5000` |
+| `JWT_SECRET_KEY` | Shared JWT secret | change me |
+| `INTERNAL_API_KEY` | Inter-service API key | change me |
+| `TRACKING_BASE_URL` | Public URL for tracking links | `http://localhost:5000` |
+| `GMAIL_*` | SMTP credentials for email delivery | — |
 
-> As migrations rodam automaticamente ao iniciar cada serviço Python (`docker-entrypoint.sh`).
+> Migrations run automatically when each Python service starts (`docker-entrypoint.sh`).
 
-### Variáveis (Kubernetes)
+### Variables (Kubernetes)
 
-Edite `kubernetes/config.yaml` (ConfigMap + Secret) com os mesmos valores do `.env`.
+Edit `kubernetes/config.yaml` (ConfigMap + Secret) with the same values as `.env`.
 
-Se alterar `gateway/nginx.conf`, sincronize com o K8s:
+If you change `gateway/nginx.conf`, sync it to K8s:
 
-```powershell
-Copy-Item gateway\nginx.conf kubernetes\nginx.conf
+```bash
+cp gateway/nginx.conf kubernetes/nginx.conf
 ```
 
 ---
 
-## Executar com Docker Compose
+## Run with Docker Compose
 
-### 1. Preparar ambiente
+### 1. Prepare environment
 
-```powershell
-cd /caminho/para/ProjetoFinal
-Copy-Item .env.example .env
+```bash
+cd /path/to/devsecops2026
+cp .env.example .env
 ```
 
-### 2. Subir o stack
+### 2. Start the stack
 
-```powershell
+```bash
 docker compose up -d --build
 ```
 
-Aguarde todos os containers ficarem healthy:
+Wait until all containers are healthy:
 
-```powershell
+```bash
 docker compose ps
 ```
 
-### 3. Acessar
+### 3. Access
 
-| Recurso | URL |
-|---------|-----|
+| Resource | URL |
+|----------|-----|
 | Frontend / API | http://localhost:5000 |
 | Login | http://localhost:5000/ |
-| Registro | http://localhost:5000/register.html |
+| Register | http://localhost:5000/register.html |
 
-### 4. Parar e limpar
+### 4. Stop and clean up
 
-```powershell
-# Parar containers
+```bash
+# Stop containers
 docker compose down
 
-# Parar e apagar volumes (dados dos bancos)
+# Stop and remove volumes (database data)
 docker compose down -v
 ```
 
-### 5. Rebuild após mudança no código
+### 5. Rebuild after code changes
 
-```powershell
-docker compose up -d --build auth        # um serviço
-docker compose up -d --build             # todos
+```bash
+docker compose up -d --build auth        # one service
+docker compose up -d --build             # all services
 ```
 
 ---
 
-## Executar com Kubernetes
+## Run with Kubernetes
 
-### 1. Preparar cluster
-
-**Docker Desktop (recomendado no Windows):**
-
-1. Docker Desktop → Settings → Kubernetes → Enable Kubernetes
-2. Confirme: `kubectl cluster-info`
+### 1. Prepare cluster
 
 **Minikube:**
 
-```powershell
+```bash
 minikube start
 ```
 
-### 2. Configurar secrets
+**Kind:**
 
-Edite `kubernetes/config.yaml` — especialmente `INTERNAL_API_KEY`, `JWT_SECRET_KEY` e `GMAIL_*`.
+```bash
+kind create cluster
+```
 
-Ajuste `TRACKING_BASE_URL` conforme o acesso:
+Confirm access: `kubectl cluster-info`
 
-| Forma de acesso | `TRACKING_BASE_URL` |
-|-----------------|---------------------|
+### 2. Configure secrets
+
+Edit `kubernetes/config.yaml` — especially `INTERNAL_API_KEY`, `JWT_SECRET_KEY`, and `GMAIL_*`.
+
+Set `TRACKING_BASE_URL` according to how you access the app:
+
+| Access method | `TRACKING_BASE_URL` |
+|---------------|---------------------|
 | NodePort | `http://localhost:30500` |
-| Port-forward na porta 5000 | `http://localhost:5000` |
+| Port-forward on port 5000 | `http://localhost:5000` |
 
-### 3. Build das imagens
+### 3. Build images
 
-Os manifests usam imagens locais (`imagePullPolicy: Never`). Build na raiz do projeto:
+Manifests use local images (`imagePullPolicy: Never`). Build from the project root:
 
-```powershell
+```bash
 docker build -f frontend/Dockerfile           -t frontend:latest .
 docker build -f services/auth/Dockerfile      -t auth:latest .
 docker build -f services/campaign/Dockerfile  -t campaign:latest .
@@ -260,9 +277,9 @@ docker build -f services/analytics/Dockerfile -t analytics:latest .
 docker build -f services/email/Dockerfile     -t email:latest .
 ```
 
-**Minikube / Kind** — carregue as imagens no cluster:
+**Minikube / Kind** — load images into the cluster:
 
-```powershell
+```bash
 # Minikube
 minikube image load frontend:latest
 minikube image load auth:latest
@@ -274,57 +291,88 @@ minikube image load email:latest
 kind load docker-image frontend:latest auth:latest campaign:latest analytics:latest email:latest
 ```
 
-> Com **Docker Desktop Kubernetes**, as imagens locais já ficam disponíveis — não é necessário carregar.
+> With **Kind** or **Minikube**, you must load images into the cluster (see above).
 
 ### 4. Deploy
 
-```powershell
+**Automated script (Minikube):**
+
+```bash
+./deploy-local-k8s.sh
+```
+
+The script builds images, loads them into Minikube, applies manifests, and starts port-forward on port 5000.
+
+**Manual:**
+
+```bash
 kubectl apply -k kubernetes/
 ```
 
-Verifique os pods:
+Verify pods:
 
-```powershell
+```bash
 kubectl get pods
 kubectl wait --for=condition=ready pod --all --timeout=180s
 ```
 
-### 5. Acessar
+### 5. Access
 
-**Opção A — NodePort (direto):**
+**Option A — NodePort (direct):**
 
 ```
 http://localhost:30500
 ```
 
-**Opção B — Port-forward (porta 5000, igual ao Compose):**
+**Option B — Port-forward (port 5000, same as Compose):**
 
-```powershell
+```bash
 kubectl port-forward svc/gateway 5000:80
 ```
 
-Acesse: http://localhost:5000
+Open: http://localhost:5000
 
-### 6. Atualizar após mudança no código
+### 6. Update after code changes
 
-```powershell
+```bash
 docker build -f services/auth/Dockerfile -t auth:latest .
 kubectl rollout restart deployment/auth
 ```
 
-Ou reaplique tudo:
+Or reapply everything:
 
-```powershell
+```bash
 kubectl apply -k kubernetes/
 ```
 
-### 7. Remover
+### 7. Vault (secrets on Kubernetes)
 
-```powershell
+On Kubernetes, sensitive credentials (JWT, SMTP, database passwords) can be injected via [HashiCorp Vault](https://www.vaultproject.io/) with the Agent Injector sidecar.
+
+Prerequisites: Helm 3+, cluster with webhook support.
+
+```bash
+# Reads values from .env (or defaults) and configures Vault + secrets
+./vault/deploy-vault.sh
+```
+
+The script installs Vault via Helm, initializes and unseals the cluster, writes secrets to `secret/my-app/env`, configures Kubernetes auth, and restarts application pods.
+
+> **Important:** save the root token shown during initialization. Without Vault, pods use values from `kubernetes/config.yaml`.
+
+In CI, the pipeline runs `vault/deploy-vault-ci.sh` (fixed values for automated tests).
+
+### 8. Remove
+
+```bash
 kubectl delete -k kubernetes/
 
-# Remover volumes persistentes (dados dos bancos)
+# Remove persistent volumes (database data)
 kubectl delete pvc auth-pg-data campaign-pg-data analytics-pg-data
+
+# Remove Vault (if installed)
+helm uninstall vault -n vault
+kubectl delete namespace vault
 ```
 
 ---
@@ -348,71 +396,71 @@ Then SSH into the instance, clone the repo, and run `docker compose up -d --buil
 
 ## Testar se está funcionando
 
-### Checklist rápido
+### Quick checklist
 
-```powershell
+```bash
 # Compose
-docker compose ps                              # todos running/healthy
-Invoke-WebRequest http://localhost:5000/       # StatusCode 200
+docker compose ps                              # all running/healthy
+curl -sf -o /dev/null -w "HTTP %{http_code}\n" http://localhost:5000/
 
 # Kubernetes
-kubectl get pods                               # todos Running
-Invoke-WebRequest http://localhost:30500/      # StatusCode 200 (NodePort)
+kubectl get pods                               # all Running
+curl -sf -o /dev/null -w "HTTP %{http_code}\n" http://localhost:30500/
 ```
 
-### Fluxo manual (API)
+### Manual API flow
 
-```powershell
-$base = "http://localhost:5000"   # ou :30500 no K8s com NodePort
+```bash
+base="http://localhost:5000"   # or :30500 on K8s with NodePort
 
-# Registro
-Invoke-RestMethod -Uri "$base/api/auth/register" -Method POST `
-  -ContentType "application/json" `
-  -Body '{"email":"test@example.com","password":"Password1!","name":"Test User"}'
+# Register
+curl -s -X POST "$base/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Password1!","name":"Test User"}'
 
 # Login
-$login = Invoke-RestMethod -Uri "$base/api/auth/login" -Method POST `
-  -ContentType "application/json" `
-  -Body '{"email":"test@example.com","password":"Password1!"}'
-
-$headers = @{ Authorization = "Bearer $($login.token)" }
+login=$(curl -s -X POST "$base/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Password1!"}')
+token=$(echo "$login" | jq -r '.token')
 
 # Dashboard (analytics)
-Invoke-RestMethod -Uri "$base/api/analytics/dashboard" -Headers $headers
+curl -s "$base/api/analytics/dashboard" \
+  -H "Authorization: Bearer $token"
 ```
 
-### Testes automatizados
+### Automated tests
 
-Com o stack Compose rodando:
+With the Compose stack running:
 
-```powershell
+```bash
 pip install -r requirements.txt
 python -m pytest tests/integration/test_flow.py -v
 ```
 
-No Kubernetes (ajuste a URL):
+On Kubernetes (adjust the URL):
 
-```powershell
-$env:INTEGRATION_BASE_URL = "http://localhost:30500"
-$env:INTERNAL_API_KEY = "change-me-internal-key"
+```bash
+export INTEGRATION_BASE_URL="http://localhost:30500"
+export INTERNAL_API_KEY="change-me-internal-key"
 python -m pytest tests/integration/test_flow.py -v
 ```
 
-O teste cobre: **auth → campanha → tracking → analytics → logout**.
+The test covers: **auth → campaign → tracking → analytics → logout**.
 
 ---
 
-## Mapa de rotas (gateway)
+## Route map (gateway)
 
-| Rota | Serviço | Métodos |
-|------|---------|---------|
+| Route | Service | Methods |
+|-------|---------|---------|
 | `/` | frontend | GET |
 | `/api/auth/*` | auth | POST, OPTIONS |
 | `/api/campaigns` | campaign | GET, POST, PUT, DELETE |
 | `/api/analytics/*` | analytics | GET |
 | `/track/*` | analytics | GET, POST |
-| `/api/internal/token/*` | auth | POST (interno) |
-| `/api/internal/*` | email | POST (interno) |
+| `/api/internal/token/*` | auth | POST (internal) |
+| `/api/internal/*` | email | POST (internal) |
 
 ---
 
@@ -420,26 +468,26 @@ O teste cobre: **auth → campanha → tracking → analytics → logout**.
 
 ### Docker Compose
 
-| Problema | Solução |
-|----------|---------|
-| Porta 5000 em uso | Altere `GATEWAY_PORT` no `.env` |
-| Auth não sobe | `docker compose logs auth` — aguarde postgres-auth healthy |
-| E-mail não envia | Configure `GMAIL_*` no `.env` |
-| Mudança no nginx | `docker compose exec gateway nginx -t && docker compose restart gateway` |
+| Problem | Solution |
+|---------|----------|
+| Port 5000 in use | Change `GATEWAY_PORT` in `.env` |
+| Auth won't start | `docker compose logs auth` — wait for postgres-auth healthy |
+| Email not sending | Configure `GMAIL_*` in `.env` |
+| nginx config change | `docker compose exec gateway nginx -t && docker compose restart gateway` |
 
 ### Kubernetes
 
-| Problema | Solução |
-|----------|---------|
-| `ImagePullBackOff` | Rebuild das imagens; `imagePullPolicy: Never` exige imagem local |
-| `Authentication service unavailable` no dashboard | Service `gateway` deve expor porta **80** internamente (`http://gateway`); reaplique `kubernetes/gateway.yaml` |
-| Tracking links quebrados | Ajuste `TRACKING_BASE_URL` em `config.yaml` para a URL pública correta |
-| Pod reiniciando | `kubectl logs deployment/<nome>` e `kubectl describe pod <nome>` |
-| `INTERNAL_API_KEY` inconsistente | Mesmo valor no ConfigMap e em todos os serviços |
+| Problem | Solution |
+|---------|----------|
+| `ImagePullBackOff` | Rebuild images; `imagePullPolicy: Never` requires a local image |
+| `Authentication service unavailable` on dashboard | `gateway` service must expose port **80** internally (`http://gateway`); reapply `kubernetes/gateway.yaml` |
+| Broken tracking links | Set `TRACKING_BASE_URL` in `config.yaml` to the correct public URL |
+| Pod restarting | `kubectl logs deployment/<name>` and `kubectl describe pod <name>` |
+| Inconsistent `INTERNAL_API_KEY` | Same value in ConfigMap and all services |
 
-### Ver logs
+### View logs
 
-```powershell
+```bash
 # Compose
 docker compose logs -f auth campaign analytics
 
@@ -450,30 +498,71 @@ kubectl logs -f deployment/gateway
 
 ---
 
-## CI/CD
+## Security and DevSecOps
 
-O pipeline em [`.github/workflows/pipeline.yaml`](.github/workflows/pipeline.yaml) executa:
+### Pre-commit (local)
 
-1. **Integration tests** — `docker compose up --build` + `pytest`
-2. **Semgrep** — análise estática de segurança
-3. **FOSSA** — auditoria de dependências
+Before each commit, [Gitleaks](https://github.com/gitleaks/gitleaks) scans the repository for exposed secrets.
 
----
+**Install:**
 
-## Desenvolvimento local (sem Docker para o app)
-
-Suba apenas os bancos:
-
-```powershell
-docker compose up -d postgres-auth postgres-campaign postgres-analytics
-python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
+```bash
+./scripts/setup-pre-commit.sh
 ```
 
-Configure as URLs locais (ver `.env.example`) e rode cada serviço separadamente. Consulte o README de cada microserviço em `services/*/README.md`.
+Configuration in [`.pre-commit-config.yaml`](.pre-commit-config.yaml) and [`.gitleaks.toml`](.gitleaks.toml). Documentation, example, and test paths are on the allowlist.
+
+**Run manually:**
+
+```bash
+pre-commit run --all-files
+```
+
+### Security tools
+
+| Tool | Config | Purpose |
+|------|--------|---------|
+| Gitleaks | `.gitleaks.toml` | Secret detection (pre-commit + CI) |
+| Semgrep | `.semgrep/custom-rules.yaml` | SAST — custom rules (hardcoded secrets, etc.) |
+| OWASP ZAP | `.zap/rules.tsv` | DAST — baseline scan against the gateway |
+| FOSSA | — | License and dependency audit |
 
 ---
 
-## Licença
+## CI/CD
 
-Projeto acadêmico — DevSecOps (Projeto Final).
+The pipeline in [`.github/workflows/pipeline.yaml`](.github/workflows/pipeline.yaml) runs in sequence:
+
+| Job | Description |
+|-----|-------------|
+| **Secret Scanning** | Gitleaks over full repository history |
+| **Integration tests** | `docker compose up --build` + `pytest tests/` |
+| **Semgrep** | Custom rules (`.semgrep/`) + `semgrep ci` |
+| **FOSSA** | Dependency analysis (requires `FOSSA_APP_TOKEN`) |
+| **DAST** | OWASP ZAP baseline against `http://gateway` (report as artifact) |
+| **K8s integration tests** | Minikube + Vault CI + deploy + `pytest` via port-forward |
+
+Required GitHub secrets: `SEMGREP_APP_TOKEN`, `FOSSA_APP_TOKEN`.
+
+Triggers: push/PR to `main` or `workflow_dispatch`.
+
+---
+
+## Local development (without Docker for the app)
+
+Start only the databases:
+
+```bash
+docker compose up -d postgres-auth postgres-campaign postgres-analytics
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Configure local URLs (see `.env.example`) and run each service separately. See per-microservice docs in [`docs/`](docs/).
+
+---
+
+## License
+
+Academic project — DevSecOps (Final Project).

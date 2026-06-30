@@ -2,8 +2,8 @@ Campaign service database migrations.
 
 Run from project root:
 
-```powershell
-$env:FLASK_APP = "services.campaign.app"
-$env:CAMPAIGN_DATABASE_URL = "postgresql+psycopg://campaign:campaign@localhost:5433/campaign_db"
+```bash
+export FLASK_APP="services.campaign.app"
+export CAMPAIGN_DATABASE_URL="postgresql+psycopg://campaign:campaign@localhost:5433/campaign_db"
 flask db upgrade
 ```

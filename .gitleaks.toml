@@ -4,7 +4,7 @@ title = "devsecops2026 gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "Documentacao, exemplos e placeholders de desenvolvimento"
+description = "Documentation, examples, and development placeholders"
 paths = [
   '''(?:^|/)\.env\.example$''',
   '''(?:^|/)vault/ci-values\.yaml$''',

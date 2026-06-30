@@ -1,88 +1,88 @@
 # Analytics microservice (`services/analytics`)
 
-Rastreamento de cliques em links de campanha e APIs de métricas consolidadas.
+Click tracking on campaign links and consolidated metrics APIs.
 
 Base URL (via gateway): `http://localhost:5000`
 
-## Responsabilidades
+## Responsibilities
 
-| RF | Funcionalidade |
-|----|----------------|
-| RF07 | Registrar cliques (timestamp, IP, geolocalização) |
-| RF08 | Dashboard agregado de todas as campanhas |
-| RF09 | Métricas detalhadas por campanha (visão por alvo) |
-| RF10 | Exportação CSV do relatório da campanha |
+| Req | Feature |
+|-----|---------|
+| RF07 | Record clicks (timestamp, IP, geolocation) |
+| RF08 | Aggregated dashboard across all campaigns |
+| RF09 | Detailed per-campaign metrics (per-target view) |
+| RF10 | CSV export of campaign report |
 
-## Autenticação
+## Authentication
 
-Rotas `/api/analytics/*` exigem JWT (`Authorization: Bearer <token>`).
+`/api/analytics/*` routes require JWT (`Authorization: Bearer <token>`).
 
-Rota pública de tracking: `GET|POST /track/<token>` (sem autenticação).
+Public tracking route: `GET|POST /track/<token>` (no authentication).
 
-## Modelo
+## Model
 
-| Entidade | Descrição |
-|----------|-----------|
-| `ClickEvent` | Evento de interação com IP, geolocalização e metadados da campanha/alvo |
+| Entity | Description |
+|--------|-------------|
+| `ClickEvent` | Interaction event with IP, geolocation, and campaign/target metadata |
 
-A resolução do token é feita via API interna do serviço campaign (`/api/internal/tracking-links/<token>`).
+Token resolution is done via the campaign service internal API (`/api/internal/tracking-links/<token>`).
 
 ## Endpoints
 
-| Método | URL | Auth |
+| Method | URL | Auth |
 |--------|-----|------|
-| `GET`/`POST` | `/track/<token>?event=click` | Não |
-| `GET` | `/api/analytics/dashboard` | Sim |
-| `GET` | `/api/analytics/campaigns/<id>` | Sim |
-| `GET` | `/api/analytics/campaigns/<id>/export` | Sim |
+| `GET`/`POST` | `/track/<token>?event=click` | No |
+| `GET` | `/api/analytics/dashboard` | Yes |
+| `GET` | `/api/analytics/campaigns/<id>` | Yes |
+| `GET` | `/api/analytics/campaigns/<id>/export` | Yes |
 
-`event` permitidos: `click` (padrão), `open`, `submit`.
+Allowed `event` values: `click` (default), `open`, `submit`.
 
-## Exemplo — registrar clique
+## Example — record click
 
 ```http
 GET http://localhost:5000/track/<token>?event=click
 ```
 
-Resposta inclui IP, timestamp e geolocalização (quando disponível para IPs públicos).
+Response includes IP, timestamp, and geolocation (when available for public IPs).
 
-## Exemplo — dashboard agregado
+## Example — aggregated dashboard
 
 ```http
 GET /api/analytics/dashboard
 Authorization: Bearer <token>
 ```
 
-## Variáveis de ambiente
+## Environment variables
 
-| Variável | Descrição |
-|----------|-----------|
-| `ANALYTICS_DATABASE_URL` | PostgreSQL dedicado (`analytics_db`) |
-| `JWT_SECRET_KEY` | Mesmo segredo do auth |
-| `ANALYTICS_SERVICE_PORT` | Porta interna (padrão `5003`) |
-| `CAMPAIGN_SERVICE_URL` | URL interna do campaign (padrão `http://campaign:5002`) |
-| `INTERNAL_API_KEY` | Segredo compartilhado com o campaign |
+| Variable | Description |
+|----------|-------------|
+| `ANALYTICS_DATABASE_URL` | Dedicated PostgreSQL (`analytics_db`) |
+| `JWT_SECRET_KEY` | Same secret as auth |
+| `ANALYTICS_SERVICE_PORT` | Internal port (default `5003`) |
+| `CAMPAIGN_SERVICE_URL` | Internal campaign URL (default `http://campaign:5002`) |
+| `INTERNAL_API_KEY` | Shared secret with campaign |
 
-## Subir com Docker
+## Run with Docker
 
-Na raiz do projeto:
+From the project root:
 
-```powershell
+```bash
 docker compose up -d --build
 ```
 
-Migrations do analytics são aplicadas no start do container.
+Analytics migrations are applied on container start.
 
-## Desenvolvimento local (opcional)
+## Local development (optional)
 
-```powershell
+```bash
 docker compose up -d postgres-analytics campaign
-$env:FLASK_APP = "services.analytics.app"
-$env:ANALYTICS_DATABASE_URL = "postgresql+psycopg://analytics:analytics@localhost:5434/analytics_db"
-$env:CAMPAIGN_SERVICE_URL = "http://localhost:5002"
-$env:INTERNAL_API_KEY = "change-me-internal-key"
+export FLASK_APP="services.analytics.app"
+export ANALYTICS_DATABASE_URL="postgresql+psycopg://analytics:analytics@localhost:5434/analytics_db"
+export CAMPAIGN_SERVICE_URL="http://localhost:5002"
+export INTERNAL_API_KEY="change-me-internal-key"
 flask db upgrade
 python -m services.analytics.app
 ```
 
-Base URL direta: `http://localhost:5003` (sem gateway).
+Direct base URL: `http://localhost:5003` (no gateway).

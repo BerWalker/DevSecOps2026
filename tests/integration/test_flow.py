@@ -33,7 +33,7 @@ def _request(method: str, path: str, *, headers=None, body=None):
 
 def test_auth_campaign_track_analytics_flow():
     email = f"integration.{uuid.uuid4().hex[:8]}@example.com"
-    password = "SenhaSegura123!"
+    password = "SecurePass123!"
 
     status, _ = _request(
         "POST",
