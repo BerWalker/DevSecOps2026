@@ -1,264 +1,224 @@
 # API Gateway (nginx)
 
-Ponto de entrada único da API em Docker. O gateway escuta na porta pública (`GATEWAY_PORT`, padrão **5000**) e encaminha `/api/auth/` para o microserviço `auth` na rede interna do Compose.
+Single entry point for the API in Docker. The gateway listens on the public port (`GATEWAY_PORT`, default **5000**) and forwards `/api/auth/` to the `auth` microservice on the internal Compose network.
 
-## Arquitetura
+## Architecture
 
 ```
-Cliente → localhost:5000 (gateway) → auth:5001 → postgres-auth
+Client → localhost:5000 (gateway) → auth:5001 → postgres-auth
                                       campaign:5002 → postgres-campaign
 ```
 
-| Componente | Ficheiro / serviço |
-|------------|-------------------|
-| Configuração | [`nginx.conf`](nginx.conf) |
+| Component | File / service |
+|-----------|----------------|
+| Configuration | [`nginx.conf`](nginx.conf) |
 | Container | `api_gateway` (`nginx:alpine`) |
-| Upstream | serviço `auth` na porta 5001 (não exposto no host) |
+| Upstream | `auth` service on port 5001 (not exposed on the host) |
 
-## Subir o stack
+## Start the stack
 
-Na raiz do projeto:
+From the project root:
 
-```powershell
-Copy-Item .env.example .env   # se ainda não existir
+```bash
+cp .env.example .env   # if .env does not exist yet
 docker compose up -d --build
 ```
 
-Base URL da API: `http://localhost:5000`
+API base URL: `http://localhost:5000`
 
-Após alterar `nginx.conf`:
+After changing `nginx.conf`:
 
-```powershell
+```bash
 docker compose exec gateway nginx -t
 docker compose restart gateway
 ```
 
-## O que o gateway faz
+## What the gateway does
 
 ### Proxy
 
-- Rotas: apenas `/api/auth/*`
-- Preserva o path completo (ex.: `/api/auth/login` chega igual ao Flask)
+- Routes: `/api/auth/*` only (see full routing in `nginx.conf` for all services)
+- Preserves the full path (e.g. `/api/auth/login` reaches Flask unchanged)
 - Headers: `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`
 
 ### CORS
 
-Origens permitidas (regex no `map`):
+Allowed origins (regex in `map`):
 
-- `http://localhost` / `https://localhost` (qualquer porta)
-- `http://127.0.0.1` / `https://127.0.0.1` (qualquer porta)
+- `http://localhost` / `https://localhost` (any port)
+- `http://127.0.0.1` / `https://127.0.0.1` (any port)
 
-Métodos expostos: `POST`, `OPTIONS`. Headers permitidos: `Authorization`, `Content-Type`.
+Exposed methods: `POST`, `OPTIONS`. Allowed headers: `Authorization`, `Content-Type`.
 
-Para outros frontends em produção, edite o bloco `map $http_origin` em [`nginx.conf`](nginx.conf).
+For other frontends in production, edit the `map $http_origin` block in [`nginx.conf`](nginx.conf).
 
-### Segurança
+### Security
 
-| Regra | Detalhe |
-|-------|---------|
-| Métodos HTTP | Só `POST` e `OPTIONS` em `/api/auth/`; resto → `405` |
-| Tamanho do body | Máximo 64 KB |
-| Rate limit | 10 pedidos/s por IP (burst 20) |
-| Headers de resposta | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` |
-| Versão nginx | Ocultada (`server_tokens off`) |
-| Raiz `/` | `404` |
+| Rule | Detail |
+|------|--------|
+| HTTP methods | Only `POST` and `OPTIONS` on `/api/auth/`; others → `405` |
+| Body size | Maximum 64 KB |
+| Rate limit | 10 requests/s per IP (burst 20) |
+| Response headers | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` |
+| nginx version | Hidden (`server_tokens off`) |
+| Root `/` | `404` |
 
-Clientes sem header `Origin` (curl, Insomnia, Postman) não são afetados por CORS.
+Clients without an `Origin` header (curl, Insomnia, Postman) are not affected by CORS.
 
-Documentação do serviço auth: [`../services/auth/README.md`](../services/auth/README.md).
+Auth service documentation: [`../docs/AUTH.md`](../docs/AUTH.md).
 
 ---
 
-## Testes de validação
+## Validation tests
 
-Execute com o stack a correr (`docker compose ps` deve mostrar `api_gateway` e `auth_service` healthy/up).
+Run with the stack up (`docker compose ps` should show `api_gateway` and `auth_service` healthy/up).
 
-Substitua a porta se definir `GATEWAY_PORT` diferente de `5000` no `.env`.
+Replace the port if you set `GATEWAY_PORT` to something other than `5000` in `.env`.
 
-### 1. Configuração nginx válida
+### 1. Valid nginx configuration
 
-```powershell
+```bash
 docker compose exec gateway nginx -t
 ```
 
-**Esperado:** `syntax is ok` e `test is successful`.
+**Expected:** `syntax is ok` and `test is successful`.
 
 ---
 
-### 2. Proxy — registo via gateway
+### 2. Proxy — register via gateway
 
-```powershell
-Invoke-RestMethod `
-  -Uri "http://localhost:5000/api/auth/register" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"email":"gateway-readme@example.com","password":"Password1!","name":"Gateway Test"}'
+```bash
+curl -s -w "\nHTTP %{http_code}\n" -X POST "http://localhost:5000/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"gateway-readme@example.com","password":"Password1!","name":"Gateway Test"}'
 ```
 
-**Esperado:** `status: success` e HTTP `201`.  
-(Use outro email se já registou este.)
+**Expected:** `status: success` and HTTP `201`.  
+(Use a different email if you already registered this one.)
 
 ---
 
 ### 3. Login via gateway
 
-```powershell
-Invoke-RestMethod `
-  -Uri "http://localhost:5000/api/auth/login" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"email":"gateway-readme@example.com","password":"Password1!"}'
+```bash
+curl -s -w "\nHTTP %{http_code}\n" -X POST "http://localhost:5000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"gateway-readme@example.com","password":"Password1!"}'
 ```
 
-**Esperado:** `status: success`, campo `token` presente, HTTP `200`.
+**Expected:** `status: success`, `token` field present, HTTP `200`.
 
 ---
 
-### 4. Auth não exposto no host (porta 5001)
+### 4. Auth not exposed on host (port 5001)
 
-```powershell
-try {
-  Invoke-WebRequest -Uri "http://localhost:5001/api/auth/login" -Method POST -TimeoutSec 3 -UseBasicParsing
-} catch {
-  $_.Exception.Message
-}
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" --connect-timeout 3 \
+  -X POST "http://localhost:5001/api/auth/login" || echo "connection refused"
 ```
 
-**Esperado:** timeout ou conexão recusada (auth só acessível dentro da rede Docker).
+**Expected:** timeout or connection refused (auth is only reachable inside the Docker network).
 
 ---
 
-### 5. Rota desconhecida — 404 na raiz
+### 5. Unknown route — 404 on root
 
-```powershell
-try {
-  Invoke-WebRequest -Uri "http://localhost:5000/" -UseBasicParsing
-} catch {
-  $_.Exception.Response.StatusCode.value__
-}
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:5000/"
 ```
 
-**Esperado:** `404`.
+**Expected:** `404`.
 
 ---
 
-### 6. Método não permitido — GET → 405
+### 6. Method not allowed — GET → 405
 
-```powershell
-try {
-  Invoke-WebRequest -Uri "http://localhost:5000/api/auth/login" -Method GET -UseBasicParsing
-} catch {
-  $_.Exception.Response.StatusCode.value__
-}
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:5000/api/auth/login"
 ```
 
-**Esperado:** `405`.
+**Expected:** `405`.
 
 ---
 
-### 7. CORS preflight — origem permitida
+### 7. CORS preflight — allowed origin
 
-```powershell
-$r = Invoke-WebRequest `
-  -Uri "http://localhost:5000/api/auth/login" `
-  -Method OPTIONS `
-  -Headers @{ Origin = "http://localhost:3000" } `
-  -UseBasicParsing
-
-"Status: $($r.StatusCode)"
-"Access-Control-Allow-Origin: $($r.Headers['Access-Control-Allow-Origin'])"
-"Access-Control-Allow-Methods: $($r.Headers['Access-Control-Allow-Methods'])"
+```bash
+curl -s -D - -o /dev/null -X OPTIONS "http://localhost:5000/api/auth/login" \
+  -H "Origin: http://localhost:3000" \
+  | grep -iE 'HTTP/|access-control'
 ```
 
-**Esperado:**
+**Expected:**
 
 - Status `204`
 - `Access-Control-Allow-Origin: http://localhost:3000`
-- `Access-Control-Allow-Methods` contém `POST`
+- `Access-Control-Allow-Methods` includes `POST`
 
 ---
 
-### 8. CORS preflight — origem não permitida
+### 8. CORS preflight — disallowed origin
 
-```powershell
-$r = Invoke-WebRequest `
-  -Uri "http://localhost:5000/api/auth/login" `
-  -Method OPTIONS `
-  -Headers @{ Origin = "http://evil.example.com" } `
-  -UseBasicParsing
-
-"Status: $($r.StatusCode)"
-"Access-Control-Allow-Origin: '$($r.Headers['Access-Control-Allow-Origin'])'"
+```bash
+curl -s -D - -o /dev/null -X OPTIONS "http://localhost:5000/api/auth/login" \
+  -H "Origin: http://evil.example.com" \
+  | grep -iE 'HTTP/|access-control'
 ```
 
-**Esperado:**
+**Expected:**
 
-- Status `204` (resposta ao preflight)
-- `Access-Control-Allow-Origin` vazio ou ausente — o browser bloqueia o pedido real
+- Status `204` (preflight response)
+- `Access-Control-Allow-Origin` empty or absent — the browser blocks the actual request
 
 ---
 
-### 9. Headers de segurança
+### 9. Security headers
 
-```powershell
-$r = Invoke-WebRequest `
-  -Uri "http://localhost:5000/api/auth/login" `
-  -Method OPTIONS `
-  -Headers @{ Origin = "http://localhost:3000" } `
-  -UseBasicParsing
-
-$r.Headers['X-Content-Type-Options']
-$r.Headers['X-Frame-Options']
-$r.Headers['Referrer-Policy']
-$r.Headers['Content-Security-Policy']
+```bash
+curl -s -D - -o /dev/null -X OPTIONS "http://localhost:5000/api/auth/login" \
+  -H "Origin: http://localhost:3000" \
+  | grep -iE 'x-content-type-options|x-frame-options|referrer-policy|content-security-policy'
 ```
 
-**Esperado:** valores definidos, por exemplo `nosniff`, `DENY`, `strict-origin-when-cross-origin`, e CSP com `default-src 'none'`.
+**Expected:** values set, e.g. `nosniff`, `DENY`, `strict-origin-when-cross-origin`, and CSP with `default-src 'none'`.
 
 ---
 
-### 10. Body demasiado grande — 413
+### 10. Body too large — 413
 
-```powershell
-$bigBody = '{"email":"big@example.com","password":"' + ('x' * 70000) + '"}'
-try {
-  Invoke-WebRequest `
-    -Uri "http://localhost:5000/api/auth/register" `
-    -Method POST `
-    -ContentType "application/json" `
-    -Body $bigBody `
-    -UseBasicParsing
-} catch {
-  $_.Exception.Response.StatusCode.value__
-}
+```bash
+big_body='{"email":"big@example.com","password":"'$(python3 -c "print('x'*70000)")'"}'
+curl -s -o /dev/null -w "%{http_code}\n" -X POST "http://localhost:5000/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d "$big_body"
 ```
 
-**Esperado:** `413` (Request Entity Too Large).
+**Expected:** `413` (Request Entity Too Large).
 
 ---
 
-### 11. Checklist rápido
+### 11. Quick checklist
 
-| # | Teste | Resultado esperado |
-|---|--------|-------------------|
-| 1 | `nginx -t` no container | OK |
+| # | Test | Expected result |
+|---|------|-----------------|
+| 1 | `nginx -t` in container | OK |
 | 2 | POST register `:5000/api/auth/register` | 201 |
 | 3 | POST login | 200 + token |
-| 4 | POST `:5001` no host | Falha de ligação |
+| 4 | POST `:5001` on host | Connection failure |
 | 5 | GET `/` | 404 |
 | 6 | GET `/api/auth/login` | 405 |
 | 7 | OPTIONS + Origin localhost | 204 + CORS |
-| 8 | OPTIONS + Origin externo | Sem ACAO |
-| 9 | Headers de segurança | Presentes |
+| 8 | OPTIONS + external Origin | No ACAO |
+| 9 | Security headers | Present |
 | 10 | Body > 64 KB | 413 |
 
 ---
 
-## Personalização
+## Customization
 
-| Objetivo | Onde alterar |
-|----------|----------------|
-| Porta pública | `GATEWAY_PORT` no `.env` |
-| Novas origens CORS | `map $http_origin` em [`nginx.conf`](nginx.conf) |
-| Novo microserviço | Novo `upstream` + `location` em [`nginx.conf`](nginx.conf) e serviço no [`compose.yaml`](../compose.yaml) |
-| Rate limit / tamanho body | `limit_req_zone`, `client_max_body_size` em [`nginx.conf`](nginx.conf) |
+| Goal | Where to change |
+|------|-----------------|
+| Public port | `GATEWAY_PORT` in `.env` |
+| New CORS origins | `map $http_origin` in [`nginx.conf`](nginx.conf) |
+| New microservice | New `upstream` + `location` in [`nginx.conf`](nginx.conf) and service in [`compose.yaml`](../compose.yaml) |
+| Rate limit / body size | `limit_req_zone`, `client_max_body_size` in [`nginx.conf`](nginx.conf) |

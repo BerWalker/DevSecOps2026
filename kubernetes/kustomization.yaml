@@ -11,7 +11,7 @@ resources:
   - frontend.yaml
   - gateway.yaml
 
-# nginx.conf espelha gateway/nginx.conf
+# nginx.conf mirrors gateway/nginx.conf
 configMapGenerator:
   - name: nginx-config
     files:

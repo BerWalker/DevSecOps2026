@@ -1,24 +1,24 @@
 # Email microservice (`services/email`)
 
-Microserviço stateless de envio de e-mail via SMTP (Gmail). Acesso via **API Gateway** na porta pública; o container não é exposto no host.
+Stateless email delivery microservice via SMTP (Gmail). Accessed through the **API Gateway** on the public port; the container is not exposed on the host.
 
 Base URL (via gateway): `http://localhost:5000`
 
-## Autenticação
+## Authentication
 
-Rotas `/api/internal/*` exigem o header `X-Internal-Key` com o valor de `INTERNAL_API_KEY` (mesmo segredo usado entre campaign e analytics).
+`/api/internal/*` routes require the `X-Internal-Key` header with the value of `INTERNAL_API_KEY` (same secret used between campaign and analytics).
 
-Chamadas **service-to-service** na rede Docker continuam a usar `http://email:5010` diretamente (`EMAIL_SERVICE_URL`).
+**Service-to-service** calls on the Docker network still use `http://email:5010` directly (`EMAIL_SERVICE_URL`).
 
 ## Endpoints
 
-| Método | URL (via gateway) | Auth |
+| Method | URL (via gateway) | Auth |
 |--------|-------------------|------|
 | `POST` | `/api/internal/send` | `X-Internal-Key` |
 
-O endpoint `/health` existe apenas dentro do container (healthcheck interno); não é exposto pelo gateway.
+The `/health` endpoint exists only inside the container (internal healthcheck); it is not exposed by the gateway.
 
-## Exemplo — enviar e-mail
+## Example — send email
 
 ```http
 POST http://localhost:5000/api/internal/send
@@ -26,92 +26,92 @@ X-Internal-Key: <INTERNAL_API_KEY>
 Content-Type: application/json
 
 {
-  "to": "joao@empresa.com",
-  "subject": "Campanha Natal",
-  "html_body": "<p>Clique no link para confirmar seus dados.</p>",
-  "text_body": "Clique no link para confirmar seus dados."
+  "to": "john@company.com",
+  "subject": "Holiday Campaign",
+  "html_body": "<p>Click the link to confirm your details.</p>",
+  "text_body": "Click the link to confirm your details."
 }
 ```
 
-Resposta (`200`):
+Response (`200`):
 
 ```json
 {
   "status": "success",
   "data": {
-    "to": "joao@empresa.com",
-    "subject": "Campanha Natal"
+    "to": "john@company.com",
+    "subject": "Holiday Campaign"
   }
 }
 ```
 
-## Variáveis de ambiente
+## Environment variables
 
-| Variável | Descrição |
-|----------|-----------|
-| `EMAIL_SERVICE_PORT` | Porta interna no container (padrão `5010`) |
-| `INTERNAL_API_KEY` | Segredo para API interna |
-| `GMAIL_FROM` | Endereço remetente exibido |
-| `GMAIL_USER` | Conta Gmail para autenticação SMTP |
-| `GMAIL_APP_PASSWORD` | Senha de app do Google |
-| `SMTP_HOST` | Servidor SMTP (padrão `smtp.gmail.com`) |
-| `SMTP_PORT` | Porta SMTP (padrão `587`) |
-| `EMAIL_SERVICE_URL` | URL interna para outros serviços (`http://email:5010`) |
+| Variable | Description |
+|----------|-------------|
+| `EMAIL_SERVICE_PORT` | Internal container port (default `5010`) |
+| `INTERNAL_API_KEY` | Secret for internal API |
+| `GMAIL_FROM` | Displayed sender address |
+| `GMAIL_USER` | Gmail account for SMTP authentication |
+| `GMAIL_APP_PASSWORD` | Google app password |
+| `SMTP_HOST` | SMTP server (default `smtp.gmail.com`) |
+| `SMTP_PORT` | SMTP port (default `587`) |
+| `EMAIL_SERVICE_URL` | Internal URL for other services (`http://email:5010`) |
 
-Para Gmail, crie uma senha de app em: https://myaccount.google.com/apppasswords
+For Gmail, create an app password at: https://myaccount.google.com/apppasswords
 
-## Subir com Docker
+## Run with Docker
 
-Na raiz do projeto:
+From the project root:
 
-```powershell
-Copy-Item .env.example .env   # se ainda não existir
-# Edite .env com credenciais Gmail reais e INTERNAL_API_KEY
+```bash
+cp .env.example .env   # if .env does not exist yet
+# Edit .env with real Gmail credentials and INTERNAL_API_KEY
 docker compose up -d --build
 ```
 
-O serviço email sobe com o stack completo (gateway + dependências). Para subir apenas email e gateway:
+The email service starts with the full stack (gateway + dependencies). To start only email and gateway:
 
-```powershell
+```bash
 docker compose up -d --build gateway email
 ```
 
-Após alterar `gateway/nginx.conf`:
+After changing `gateway/nginx.conf`:
 
-```powershell
+```bash
 docker compose exec gateway nginx -t
 docker compose restart gateway
 ```
 
-Gateway e arquitetura: [`../../gateway/README.md`](../../gateway/README.md).
+Gateway and architecture: [`gateway/README.md`](../gateway/README.md).
 
 ---
 
 ## Insomnia
 
-Crie um workspace ou pasta **Email** com base URL `http://localhost:5000`.
+Create a workspace or **Email** folder with base URL `http://localhost:5000`.
 
-Defina uma **Environment** com:
+Define an **Environment** with:
 
-| Variável | Valor |
+| Variable | Value |
 |----------|-------|
 | `base_url` | `http://localhost:5000` |
-| `internal_key` | valor de `INTERNAL_API_KEY` no `.env` (ex.: `change-me-internal-key`) |
+| `internal_key` | value of `INTERNAL_API_KEY` in `.env` (e.g. `change-me-internal-key`) |
 
-Em todos os pedidos abaixo, adicione o header:
+For all requests below, add the header:
 
-| Header | Valor |
+| Header | Value |
 |--------|-------|
 | `X-Internal-Key` | `{{ internal_key }}` |
 | `Content-Type` | `application/json` |
 
-Substitua `destino@exemplo.com` por um e-mail real para receber a mensagem de teste.
+Replace `recipient@example.com` with a real email address to receive the test message.
 
 ---
 
-### 1. Enviar e-mail (sucesso)
+### 1. Send email (success)
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
 | Method | `POST` |
 | URL | `{{ base_url }}/api/internal/send` |
@@ -120,10 +120,10 @@ Substitua `destino@exemplo.com` por um e-mail real para receber a mensagem de te
 
 ```json
 {
-  "to": "destino@exemplo.com",
-  "subject": "Teste DevSecOps",
-  "html_body": "<p>E-mail de teste via gateway.</p>",
-  "text_body": "E-mail de teste via gateway."
+  "to": "recipient@example.com",
+  "subject": "DevSecOps Test",
+  "html_body": "<p>Test email via gateway.</p>",
+  "text_body": "Test email via gateway."
 }
 ```
 
@@ -133,31 +133,31 @@ Substitua `destino@exemplo.com` por um e-mail real para receber a mensagem de te
 {
   "status": "success",
   "data": {
-    "to": "destino@exemplo.com",
-    "subject": "Teste DevSecOps"
+    "to": "recipient@example.com",
+    "subject": "DevSecOps Test"
   }
 }
 ```
 
-Verifique a caixa de entrada do destinatário (e spam).
+Check the recipient's inbox (and spam folder).
 
 ---
 
-### 2. Chave interna inválida — 401
+### 2. Invalid internal key — 401
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
 | Method | `POST` |
 | URL | `{{ base_url }}/api/internal/send` |
-| Header | `X-Internal-Key: chave-errada` |
+| Header | `X-Internal-Key: wrong-key` |
 
 **Body (JSON):**
 
 ```json
 {
-  "to": "destino@exemplo.com",
-  "subject": "Teste",
-  "html_body": "<p>Teste</p>"
+  "to": "recipient@example.com",
+  "subject": "Test",
+  "html_body": "<p>Test</p>"
 }
 ```
 
@@ -172,17 +172,17 @@ Verifique a caixa de entrada do destinatário (e spam).
 
 ---
 
-### 3. Chave interna ausente — 401
+### 3. Missing internal key — 401
 
-Igual ao teste 2, mas **sem** o header `X-Internal-Key`.
+Same as test 2, but **without** the `X-Internal-Key` header.
 
 **Expected:** `401`
 
 ---
 
-### 4. Destinatário inválido — 400
+### 4. Invalid recipient — 400
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
 | Method | `POST` |
 | URL | `{{ base_url }}/api/internal/send` |
@@ -191,9 +191,9 @@ Igual ao teste 2, mas **sem** o header `X-Internal-Key`.
 
 ```json
 {
-  "to": "nao-e-email",
-  "subject": "Teste",
-  "html_body": "<p>Teste</p>"
+  "to": "not-an-email",
+  "subject": "Test",
+  "html_body": "<p>Test</p>"
 }
 ```
 
@@ -208,15 +208,15 @@ Igual ao teste 2, mas **sem** o header `X-Internal-Key`.
 
 ---
 
-### 5. Assunto ausente — 400
+### 5. Missing subject — 400
 
 **Body (JSON):**
 
 ```json
 {
-  "to": "destino@exemplo.com",
+  "to": "recipient@example.com",
   "subject": "",
-  "html_body": "<p>Teste</p>"
+  "html_body": "<p>Test</p>"
 }
 ```
 
@@ -231,14 +231,14 @@ Igual ao teste 2, mas **sem** o header `X-Internal-Key`.
 
 ---
 
-### 6. Corpo HTML ausente — 400
+### 6. Missing HTML body — 400
 
 **Body (JSON):**
 
 ```json
 {
-  "to": "destino@exemplo.com",
-  "subject": "Teste",
+  "to": "recipient@example.com",
+  "subject": "Test",
   "html_body": ""
 }
 ```
@@ -254,54 +254,54 @@ Igual ao teste 2, mas **sem** o header `X-Internal-Key`.
 
 ---
 
-### 7. Método não permitido — GET → 405
+### 7. Method not allowed — GET → 405
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
 | Method | `GET` |
 | URL | `{{ base_url }}/api/internal/send` |
 
-**Expected:** `405` (bloqueado pelo gateway)
+**Expected:** `405` (blocked by gateway)
 
 ---
 
-### 8. Porta direta não exposta — conexão recusada
+### 8. Direct port not exposed — connection refused
 
-Tente aceder ao serviço email diretamente no host (sem gateway):
+Try to access the email service directly on the host (without gateway):
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
 | Method | `POST` |
 | URL | `http://localhost:5010/api/internal/send` |
 
-**Expected:** timeout ou conexão recusada — o email só é acessível via gateway (`:5000`) ou na rede Docker (`email:5010`).
+**Expected:** timeout or connection refused — email is only reachable via gateway (`:5000`) or on the Docker network (`email:5010`).
 
 ---
 
-### 9. Checklist rápido
+### 9. Quick checklist
 
-| # | Teste | Resultado esperado |
-|---|--------|-------------------|
-| 1 | POST send com chave válida | 200 + e-mail recebido |
-| 2 | Chave inválida | 401 |
-| 3 | Sem `X-Internal-Key` | 401 |
-| 4 | E-mail inválido | 400 |
-| 5 | Assunto vazio | 400 |
-| 6 | `html_body` vazio | 400 |
+| # | Test | Expected result |
+|---|------|-----------------|
+| 1 | POST send with valid key | 200 + email received |
+| 2 | Invalid key | 401 |
+| 3 | No `X-Internal-Key` | 401 |
+| 4 | Invalid email | 400 |
+| 5 | Empty subject | 400 |
+| 6 | Empty `html_body` | 400 |
 | 7 | GET `/api/internal/send` | 405 |
-| 8 | POST `:5010` no host | Falha de ligação |
+| 8 | POST `:5010` on host | Connection failure |
 
 ---
 
-## Desenvolvimento local (opcional)
+## Local development (optional)
 
-```powershell
-$env:FLASK_APP = "services.email.app"
-$env:INTERNAL_API_KEY = "change-me-internal-key"
-$env:GMAIL_FROM = "your@gmail.com"
-$env:GMAIL_USER = "your@gmail.com"
-$env:GMAIL_APP_PASSWORD = "xxxx xxxx xxxx xxxx"
+```bash
+export FLASK_APP="services.email.app"
+export INTERNAL_API_KEY="change-me-internal-key"
+export GMAIL_FROM="your@gmail.com"
+export GMAIL_USER="your@gmail.com"
+export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"
 python -m services.email.app
 ```
 
-Base URL direta: `http://localhost:5010` (sem gateway).
+Direct base URL: `http://localhost:5010` (no gateway).
